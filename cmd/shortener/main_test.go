@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -13,9 +12,10 @@ func TestHandleRedirect(t *testing.T) {
 		links: map[string]string{
 			"123": "https://practicum.yandex.ru/",
 		},
-		id: "123",
+		id:   "123",
+		base: "http://localhost:8080/",
 	}
-	shortenedURL := fmt.Sprintf("http://localhost:8080/%s", m.id)
+	shortenedURL := m.base + m.id
 	req, err := http.NewRequest("GET", shortenedURL, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -42,7 +42,8 @@ func TestHandleShortenURL(t *testing.T) {
 		links: map[string]string{
 			"123": "https://practicum.yandex.ru/",
 		},
-		id: "123",
+		id:   "123",
+		base: "http://localhost:8080/",
 	}
 	originalURL := m.links[m.id]
 	body := strings.NewReader("https://practicum.yandex.ru/")
@@ -64,7 +65,7 @@ func TestHandleShortenURL(t *testing.T) {
 			contentType, expectedContentType)
 	}
 
-	expectedURL := fmt.Sprintf("http://localhost:8080/%s", m.id)
+	expectedURL := m.base + "/" + m.id
 	bodyBytes := rr.Body.Bytes()
 	if string(bodyBytes) != expectedURL {
 		t.Errorf("handler returned unexpected body: got %v want %v",
