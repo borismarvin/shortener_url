@@ -1,4 +1,4 @@
-// iter4
+// iter5
 package main
 
 import (
@@ -7,6 +7,7 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"os"
 
 	"github.com/borismarvin/shortener_url.git/cmd/shortener/config"
 	"github.com/gorilla/mux"
@@ -22,13 +23,28 @@ type idToURLMap struct {
 }
 
 func main() {
-	startAddr := flag.String("a", "localhost:8080", "HTTP server start address")
-	baseAddr := flag.String("b", "http://localhost:8080", "Base address")
+
+	var startAddr, baseAddr string
+
+	envStartAddr := os.Getenv("SERVER_ADDRESS")
+	envBaseAddr := os.Getenv("BASE_ADDRESS")
+
+	flag.StringVar(&startAddr, "a", "localhost:8080", "HTTP server start address")
+	flag.StringVar(&baseAddr, "b", "http://localhost:8080", "Base address")
+	flag.Parse()
+
+	if envStartAddr != "" {
+		startAddr = envStartAddr
+	}
+	if envBaseAddr != "" {
+		baseAddr = envBaseAddr
+	}
+
 	flag.Parse()
 	builder := config.NewGetArgsBuilder()
 	args := builder.
-		SetStart(*startAddr).
-		SetBase(*baseAddr).Build()
+		SetStart(startAddr).
+		SetBase(baseAddr).Build()
 	shortener := idToURLMap{
 		links: make(map[string]string),
 		base:  args.BaseAddr,
