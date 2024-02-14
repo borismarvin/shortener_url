@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/borismarvin/shortener_url.git/cmd/shortener/config"
+	"github.com/borismarvin/shortener_url.git/config"
 	"github.com/gorilla/mux"
 )
 
@@ -22,10 +22,7 @@ type idToURLMap struct {
 	base  string
 }
 
-func main() {
-
-	var startAddr, baseAddr string
-
+func InitializeConfig(startAddr string, baseAddr string) config.Args {
 	envStartAddr := os.Getenv("SERVER_ADDRESS")
 	envBaseAddr := os.Getenv("BASE_ADDRESS")
 
@@ -39,18 +36,28 @@ func main() {
 	if envBaseAddr != "" {
 		baseAddr = envBaseAddr
 	}
-
 	flag.Parse()
+
 	builder := config.NewGetArgsBuilder()
 	args := builder.
 		SetStart(startAddr).
 		SetBase(baseAddr).Build()
+	return *args
+}
+
+func main() {
+
+	var startAddr, baseAddr string
+
+	args := InitializeConfig(startAddr, baseAddr)
+
+	r := mux.NewRouter()
+
 	shortener := idToURLMap{
 		links: make(map[string]string),
 		base:  args.BaseAddr,
 	}
 	shortener.id = generateID()
-	r := mux.NewRouter()
 	shortenedURL := fmt.Sprintf("/%s", shortener.id)
 	r.HandleFunc(shortenedURL, shortener.handleRedirect)
 	r.HandleFunc("/", shortener.handleShortenURL)
@@ -59,7 +66,7 @@ func main() {
 }
 
 func (iu idToURLMap) handleShortenURL(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "POST" {
+	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -79,7 +86,7 @@ func (iu idToURLMap) handleShortenURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func (iu idToURLMap) handleRedirect(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
+	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
@@ -98,7 +105,7 @@ func decodeRequestBody(w http.ResponseWriter, r *http.Request) (string, error) {
 	if err != nil {
 		http.Error(w, "Error reading request body", http.StatusBadRequest)
 	}
-	return string(body), nil
+	return string(body), err
 
 }
 
