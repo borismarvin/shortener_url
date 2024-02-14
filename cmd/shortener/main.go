@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/borismarvin/shortener_url.git/config"
+	"github.com/borismarvin/shortener_url.git/cmd/shortener/config"
 	"github.com/gorilla/mux"
 )
 
