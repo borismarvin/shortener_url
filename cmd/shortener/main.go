@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/borismarvin/shortener_url.git/cmd/shortener/config"
+	"github.com/borismarvin/shortener_url.git/internal/app/logger"
 	"github.com/gorilla/mux"
 )
 
@@ -57,12 +58,13 @@ func main() {
 		links: make(map[string]string),
 		base:  args.BaseAddr,
 	}
+	logger.Initialize()
 	shortener.id = generateID()
 	shortenedURL := fmt.Sprintf("/%s", shortener.id)
 	r.HandleFunc(shortenedURL, shortener.handleRedirect)
 	r.HandleFunc("/", shortener.handleShortenURL)
 	http.Handle("/", r)
-	http.ListenAndServe(args.StartAddr, r)
+	http.ListenAndServe(args.StartAddr, logger.WithLogging(r))
 }
 
 func (iu idToURLMap) handleShortenURL(w http.ResponseWriter, r *http.Request) {
