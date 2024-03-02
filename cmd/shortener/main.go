@@ -2,6 +2,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -63,6 +64,7 @@ func main() {
 	shortenedURL := fmt.Sprintf("/%s", shortener.id)
 	r.HandleFunc(shortenedURL, shortener.handleRedirect)
 	r.HandleFunc("/", shortener.handleShortenURL)
+	r.HandleFunc("/api/shorten", shortener.handleShortenURLJSON)
 	http.Handle("/", r)
 	http.ListenAndServe(args.StartAddr, logger.WithLogging(r))
 }
@@ -85,6 +87,28 @@ func (iu idToURLMap) handleShortenURL(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte(shortenedURL))
+}
+
+func (iu idToURLMap) handleShortenURLJSON(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	url, err := decodeRequestBody(w, r)
+
+	if err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	id := iu.id
+	iu.links[id] = url
+
+	shortenedURL := iu.base + "/" + id
+	resp, err := json.Marshal(shortenedURL)
+	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(resp)
 }
 
 func (iu idToURLMap) handleRedirect(w http.ResponseWriter, r *http.Request) {
