@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -84,7 +85,7 @@ func TestHandleShortenURLJSON(t *testing.T) {
 			"123": "https://practicum.yandex.ru/",
 		},
 		id:   "123",
-		base: "http://localhost:8080/",
+		base: "http://localhost:8080",
 	}
 	originalURL := m.links[m.id]
 	body := strings.NewReader(`{"url":"https://practicum.yandex.ru/"}`)
@@ -105,12 +106,13 @@ func TestHandleShortenURLJSON(t *testing.T) {
 		t.Errorf("handler returned unexpected Content-Type header: got %v want %v",
 			contentType, expectedContentType)
 	}
-
-	expectedURL := `"` + m.base + m.id + `"`
+	var result GetData
+	result.Result = m.base + "/" + m.id
 	bodyBytes := rr.Body.Bytes()
-	if string(bodyBytes) != expectedURL {
+	expecetedResult, _ := json.Marshal(result)
+	if string(bodyBytes) != string(expecetedResult) {
 		t.Errorf("handler returned unexpected body: got %v want %v",
-			string(bodyBytes), expectedURL)
+			string(bodyBytes), result)
 	}
 
 	if url := m.links[m.id]; url != originalURL {
