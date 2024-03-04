@@ -26,7 +26,7 @@ type idToURLMap struct {
 }
 
 type URLSctruct struct {
-	Url string
+	URL string
 }
 
 func InitializeConfig(startAddr string, baseAddr string) config.Args {
@@ -111,7 +111,7 @@ func (iu idToURLMap) handleShortenURLJSON(w http.ResponseWriter, r *http.Request
 		return
 	}
 	id := iu.id
-	iu.links[id] = url.Url
+	iu.links[id] = url.URL
 
 	shortenedURL := iu.base + "/" + id
 	resp, err := json.Marshal(shortenedURL)
