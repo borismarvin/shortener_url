@@ -25,8 +25,11 @@ type idToURLMap struct {
 	base  string
 }
 
-type URLSctruct struct {
+type SendData struct {
 	URL string
+}
+type GetData struct {
+	Result string
 }
 
 func InitializeConfig(startAddr string, baseAddr string) config.Args {
@@ -99,7 +102,8 @@ func (iu idToURLMap) handleShortenURLJSON(w http.ResponseWriter, r *http.Request
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	var url URLSctruct
+	var url SendData
+	var result GetData
 	var buf bytes.Buffer
 	_, err := buf.ReadFrom(r.Body)
 	if err != nil {
@@ -113,8 +117,9 @@ func (iu idToURLMap) handleShortenURLJSON(w http.ResponseWriter, r *http.Request
 	id := iu.id
 	iu.links[id] = url.URL
 
-	shortenedURL := iu.base + id
-	resp, err := json.Marshal(shortenedURL)
+	shortenedURL := iu.base + "/" + id
+	result.Result = shortenedURL
+	resp, err := json.Marshal(result)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
