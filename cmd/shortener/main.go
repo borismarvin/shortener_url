@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -22,6 +23,10 @@ type idToURLMap struct {
 	links map[string]string
 	id    string
 	base  string
+}
+
+type URLSctruct struct {
+	Url string
 }
 
 func InitializeConfig(startAddr string, baseAddr string) config.Args {
@@ -94,15 +99,19 @@ func (iu idToURLMap) handleShortenURLJSON(w http.ResponseWriter, r *http.Request
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-
-	url, err := decodeRequestBody(w, r)
-
+	var url URLSctruct
+	var buf bytes.Buffer
+	_, err := buf.ReadFrom(r.Body)
 	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err = json.Unmarshal(buf.Bytes(), &url); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	id := iu.id
-	iu.links[id] = url
+	iu.links[id] = url.Url
 
 	shortenedURL := iu.base + "/" + id
 	resp, err := json.Marshal(shortenedURL)

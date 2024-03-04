@@ -77,3 +77,44 @@ func TestHandleShortenURL(t *testing.T) {
 			url, originalURL)
 	}
 }
+
+func TestHandleShortenURLJSON(t *testing.T) {
+	m := idToURLMap{
+		links: map[string]string{
+			"123": "https://practicum.yandex.ru/",
+		},
+		id:   "123",
+		base: "http://localhost:8080/",
+	}
+	originalURL := m.links[m.id]
+	body := strings.NewReader(`{"url":"https://practicum.yandex.ru/"}`)
+	req, err := http.NewRequest("POST", "/api/shorten", body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rr := httptest.NewRecorder()
+	m.handleShortenURLJSON(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			rr.Code, http.StatusCreated)
+	}
+
+	expectedContentType := "application/json"
+	if contentType := rr.Header().Get("Content-Type"); contentType != expectedContentType {
+		t.Errorf("handler returned unexpected Content-Type header: got %v want %v",
+			contentType, expectedContentType)
+	}
+
+	expectedURL := m.base + "/" + m.id
+	bodyBytes := rr.Body.Bytes()
+	if string(bodyBytes) != expectedURL {
+		t.Errorf("handler returned unexpected body: got %v want %v",
+			string(bodyBytes), expectedURL)
+	}
+
+	if url := m.links[m.id]; url != originalURL {
+		t.Errorf("handler failed to add URL to map: got %v want %v",
+			url, originalURL)
+	}
+}
