@@ -113,7 +113,7 @@ func (iu idToURLMap) handleShortenURLJSON(w http.ResponseWriter, r *http.Request
 	id := iu.id
 	iu.links[id] = url.URL
 
-	shortenedURL := iu.base + "/" + id
+	shortenedURL := iu.base + id
 	resp, err := json.Marshal(shortenedURL)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
