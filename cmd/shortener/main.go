@@ -100,10 +100,6 @@ func main() {
 	shortenedURL := fmt.Sprintf("/%s", shortener.id)
 	r.HandleFunc(shortenedURL, shortener.handleRedirect)
 	r.HandleFunc("/", shortener.handleShortenURL)
-	originalURL := "https://practicum.yandex.ru"
-	http.Post(`http://localhost:8080/api/shorten`, `application/json`,
-		// ключи указаны в разных регистрах, но данные сконвертируются правильно
-		bytes.NewBufferString(`{"url":`+`"`+originalURL+`"}`))
 	r.HandleFunc("/api/shorten", shortener.handleShortenURLJSON)
 	http.Handle("/", r)
 	http.ListenAndServe(args.StartAddr, logger.WithLogging(r))
