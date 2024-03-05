@@ -98,35 +98,47 @@ func (iu idToURLMap) handleShortenURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func (iu idToURLMap) handleShortenURLJSON(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	var url SendData
 	var result GetData
-	var buf bytes.Buffer
-	_, err := buf.ReadFrom(r.Body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if err = json.Unmarshal(buf.Bytes(), &url); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	id := iu.id
-	iu.links[id] = url.URL
+	var url SendData
+	if r.Method == http.MethodPost {
 
-	shortenedURL := iu.base + "/" + id
-	result.Result = shortenedURL
-	resp, err := json.Marshal(result)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		var buf bytes.Buffer
+		_, err := buf.ReadFrom(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if err = json.Unmarshal(buf.Bytes(), &url); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		id := iu.id
+		iu.links[id] = url.URL
+
+		shortenedURL := iu.base + "/" + id
+		result.Result = shortenedURL
+		resp, err := json.Marshal(result)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(resp)
+	} else {
+		originalURL := iu.links[iu.id]
+		url.URL = originalURL
+		fmt.Printf("id: %v\n", url.URL)
+		resp, err := json.Marshal(url)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(resp)
 	}
-	w.WriteHeader(http.StatusCreated)
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(resp)
+
 }
 
 func (iu idToURLMap) handleRedirect(w http.ResponseWriter, r *http.Request) {
