@@ -32,7 +32,7 @@ type idToURLMap struct {
 }
 
 type SendData struct {
-	URL string `json:"result"`
+	URL string `json:"url"`
 }
 type GetData struct {
 	Result string `json:"result"`
@@ -165,6 +165,8 @@ func (iu idToURLMap) handleShortenURLJSON(w http.ResponseWriter, r *http.Request
 		w.WriteHeader(http.StatusCreated)
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(resp)
+	} else {
+		w.WriteHeader(http.StatusBadRequest)
 	}
 }
 

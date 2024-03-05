@@ -93,6 +93,7 @@ func TestHandleShortenURLJSON(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
 	m.handleShortenURLJSON(rr, req)
 
