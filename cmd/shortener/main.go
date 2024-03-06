@@ -96,13 +96,6 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 	// w.Writer будет отвечать за gzip-сжатие, поэтому пишем в него
 	return w.Writer.Write(b)
 }
-
-func (w gzipWriter) WriteHeader(statusCode int) {
-	if statusCode < 300 {
-		w.Header().Set("Content-Encoding", "gzip")
-	}
-	w.WriteHeader(statusCode)
-}
 func InitializeConfig(startAddr string, baseAddr string) config.Args {
 	envStartAddr := os.Getenv("SERVER_ADDRESS")
 	envBaseAddr := os.Getenv("BASE_ADDRESS")
