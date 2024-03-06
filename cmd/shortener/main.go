@@ -97,10 +97,6 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }
 
-func (w gzipWriter) Header() http.Header {
-	return w.Header()
-}
-
 func (w gzipWriter) WriteHeader(statusCode int) {
 	if statusCode < 300 {
 		w.Header().Set("Content-Encoding", "gzip")
