@@ -162,8 +162,9 @@ func (iu idToURLMap) handleShortenURLJSON(w http.ResponseWriter, r *http.Request
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		w.WriteHeader(http.StatusCreated)
 		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+
 		w.Write(resp)
 	} else {
 		w.WriteHeader(http.StatusBadRequest)
