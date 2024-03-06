@@ -62,7 +62,7 @@ type ContentTypes struct {
 	code ContentType
 }
 
-func gzipMiddleware(h http.Handler) http.Handler {
+func GzipMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ow := w
 
@@ -73,6 +73,7 @@ func gzipMiddleware(h http.Handler) http.Handler {
 			ow = cw
 			defer cw.Close()
 		}
+
 		contentEncoding := r.Header.Get("Content-Encoding")
 		sendsGzip := strings.Contains(contentEncoding, "gzip")
 		if sendsGzip {
@@ -95,9 +96,10 @@ type compressWriter struct {
 }
 
 func newCompressWriter(w http.ResponseWriter) *compressWriter {
+	zw, _ := gzip.NewWriterLevel(w, gzip.BestCompression)
 	return &compressWriter{
 		w:  w,
-		zw: gzip.NewWriter(w),
+		zw: zw,
 	}
 }
 
@@ -189,7 +191,7 @@ func main() {
 	r.HandleFunc(shortenedURL, shortener.handleRedirect)
 	r.HandleFunc("/", shortener.handleShortenURL)
 	r.HandleFunc("/api/shorten", shortener.handleShortenURLJSON)
-	http.Handle("/", gzipMiddleware(r))
+	http.Handle("/", GzipMiddleware(r))
 	http.ListenAndServe(args.StartAddr, logger.WithLogging(r))
 }
 
