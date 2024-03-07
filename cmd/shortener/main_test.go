@@ -38,7 +38,7 @@ func TestPostUrl(t *testing.T) {
 		},
 		{
 			name:   "Получение полной ссылки по короткой",
-			url:    "/b64da5d0149024b5b58c04c9fe758923",
+			url:    "/d41d8cd98f00b204e9800998ecf8427e",
 			method: http.MethodGet,
 			body:   nil,
 			want: want{

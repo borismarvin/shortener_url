@@ -93,23 +93,22 @@ func (f *FileStorage) Save(hash string, url string) error {
 	return nil
 }
 
-// Find ищет в файле ссылку
+// Find searches for a URL in the file based on the given hash
 func (f *FileStorage) Find(hash string) (link string, err error) {
 	f.mx.Lock()
 	defer f.mx.Unlock()
 
 	_, err = f.storageReader.file.Seek(0, io.SeekStart)
 	if err != nil {
-		fmt.Printf("Ошибка при установке указателя в бд - %s\n", err)
-		return "", err
+		return "", fmt.Errorf("error seeking in the database: %s", err)
 	}
 
 	for {
 		item, err := f.storageReader.Read()
-
-		if err != nil {
-			fmt.Printf("Ошибка при чтении из бд - %s\n", err)
-			return "", err
+		if err == io.EOF { // No more items in the file
+			return "", fmt.Errorf("link not found for hash: %s", hash)
+		} else if err != nil {
+			return "", fmt.Errorf("error reading from the database: %s", err)
 		}
 
 		if item.Hash == hash {
