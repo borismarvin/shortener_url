@@ -68,19 +68,13 @@ type gzipWriter struct {
 	Writer io.Writer
 }
 
-// Write response in compressed form
 func (w gzipWriter) Write(b []byte) (int, error) {
-	// w.Writer будет отвечать за gzip-сжатие, поэтому пишем в него
 	return w.Writer.Write(b)
 }
 
-// GzipHandler middleware handle g-zipped requests
 func GzipHandler(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		// проверяем, что клиент поддерживает gzip-сжатие
 		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-			// если gzip не поддерживается, передаём управление
-			// дальше без изменений
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -90,7 +84,6 @@ func GzipHandler(next http.Handler) http.Handler {
 			return
 		}
 
-		// создаём gzip.Writer поверх текущего w
 		gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
 		if err != nil {
 			io.WriteString(w, err.Error())
@@ -99,7 +92,7 @@ func GzipHandler(next http.Handler) http.Handler {
 		defer gz.Close()
 
 		w.Header().Set("Content-Encoding", "gzip")
-		// передаём обработчику страницы переменную типа gzipWriter для вывода данных
+
 		next.ServeHTTP(gzipWriter{ResponseWriter: w, Writer: gz}, r)
 	}
 	return http.HandlerFunc(fn)
