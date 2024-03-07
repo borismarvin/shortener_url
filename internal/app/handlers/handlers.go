@@ -4,8 +4,8 @@ import (
 	"crypto/md5"
 	"encoding/json"
 	"fmt"
+	"io"
 
-	"io/ioutil"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -48,7 +48,7 @@ func APICreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
 
 // CreateShortURLHandler — создает короткий урл.
 func CreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
-	body, _ := ioutil.ReadAll(r.Body)
+	body, _ := io.ReadAll(r.Body)
 
 	defer r.Body.Close()
 
