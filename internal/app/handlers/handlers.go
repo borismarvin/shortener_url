@@ -24,22 +24,25 @@ type url struct {
 
 // Сокращенный url
 type response struct {
-	URL string `json:"result"`
+	Result string `json:"result"`
 }
 
 // APICreateShortURLHandler создает короткий урл
 func APICreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
 	url := url{}
-
+	response := response{}
 	if err := json.NewDecoder(r.Body).Decode(&url); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	url.URL = shortURL(url.URL)
+	response.Result = shortURL(url.URL)
 
-	resp, _ := json.Marshal(response(url))
-
+	resp, err := json.Marshal(response)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	w.Header().Add("Content-Type", "application/json")
 	w.Header().Add("Accept", "application/json")
 	w.WriteHeader(http.StatusCreated)
