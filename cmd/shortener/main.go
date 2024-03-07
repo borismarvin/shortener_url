@@ -3,7 +3,6 @@ package main
 
 import (
 	"bytes"
-	"compress/gzip"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -11,9 +10,11 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/borismarvin/shortener_url.git/cmd/shortener/config"
+	"github.com/borismarvin/shortener_url.git/internal/app/gzip"
 	"github.com/borismarvin/shortener_url.git/internal/app/logger"
 	"github.com/gorilla/mux"
 )
@@ -63,41 +64,38 @@ type ContentTypes struct {
 	code ContentType
 }
 
-type gzipWriter struct {
-	http.ResponseWriter
-	Writer io.Writer
-}
+func GzipMiddleware() func(h http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			ow := w
 
-func (w gzipWriter) Write(b []byte) (int, error) {
-	return w.Writer.Write(b)
-}
+			//allAcceptEncodingHeaders := strings.Split(r.Header.Values("Accept-Encoding")[0], ", ")
+			var allAcceptEncodingSlice []string
+			allAcceptEncodingHeaders := r.Header.Values("Accept-Encoding")
+			if len(allAcceptEncodingHeaders) > 0 {
+				allAcceptEncodingSlice = strings.Split(allAcceptEncodingHeaders[0], ", ")
+			}
+			if slices.Contains(allAcceptEncodingSlice, "gzip") {
+				cw := gzip.NewCompressWriter(w)
+				ow = cw
+				defer cw.Close()
+			}
 
-func GzipHandler(next http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-			next.ServeHTTP(w, r)
-			return
+			contentEncodings := r.Header.Values("Content-Encoding")
+			if slices.Contains(contentEncodings, "gzip") {
+				cr, err := gzip.NewCompressReader(r.Body)
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+				r.Body = cr
+				defer cr.Close()
+			}
+			h.ServeHTTP(ow, r)
 		}
-
-		if !strings.Contains(GzipContentTypes, r.Header.Get("Content-Type")) {
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
-		if err != nil {
-			io.WriteString(w, err.Error())
-			return
-		}
-		defer gz.Close()
-
-		w.Header().Set("Content-Encoding", "gzip")
-
-		next.ServeHTTP(gzipWriter{ResponseWriter: w, Writer: gz}, r)
+		return http.HandlerFunc(fn)
 	}
-	return http.HandlerFunc(fn)
 }
-
 func InitializeConfig(startAddr string, baseAddr string) config.Args {
 	envStartAddr := os.Getenv("SERVER_ADDRESS")
 	envBaseAddr := os.Getenv("BASE_ADDRESS")
@@ -139,7 +137,7 @@ func main() {
 	r.HandleFunc(shortenedURL, shortener.handleRedirect)
 	r.HandleFunc("/", shortener.handleShortenURL)
 	r.HandleFunc("/api/shorten", shortener.handleShortenURLJSON)
-	http.Handle("/", GzipHandler(r))
+	http.Handle("/", GzipMiddleware()(r))
 	http.ListenAndServe(args.StartAddr, logger.WithLogging(r))
 }
 
