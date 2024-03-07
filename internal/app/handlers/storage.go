@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ type FileStorage struct {
 	mx            sync.Mutex
 	storageReader *reader
 	storageWriter *writer
+	currentID     int // Текущий индекс записи
 }
 
 type reader struct {
@@ -84,7 +86,17 @@ func (f *FileStorage) Save(hash string, url string) error {
 	f.mx.Lock()
 	defer f.mx.Unlock()
 
-	a := Item{Hash: hash, URL: url}
+	if ok, _ := f.IsEmpty(); ok {
+		f.currentID = 0
+	} else {
+		lines, err := f.CountLines()
+		if err != nil {
+			return err
+		}
+		f.currentID = lines + 1
+	}
+
+	a := Item{UUID: f.currentID, ShortURL: hash, OriginalURL: url}
 	err := f.storageWriter.Write(&a)
 	if err != nil {
 		return err
@@ -111,14 +123,44 @@ func (f *FileStorage) Find(hash string) (link string, err error) {
 			return "", fmt.Errorf("error reading from the database: %s", err)
 		}
 
-		if item.Hash == hash {
-			return item.URL, nil
+		if item.ShortURL == hash {
+			return item.OriginalURL, nil
 		}
 	}
 }
 
+// IsEmpty проверяет, пуст ли файл
+func (f *FileStorage) IsEmpty() (bool, error) {
+	fileInfo, err := f.storageReader.file.Stat()
+	if err != nil {
+		return false, err
+	}
+
+	return fileInfo.Size() == 0, nil
+}
+
+func (f *FileStorage) CountLines() (int, error) {
+	_, err := f.storageReader.file.Seek(0, io.SeekStart)
+	if err != nil {
+		return 0, fmt.Errorf("ошибка при поиске в базе данных: %s", err)
+	}
+
+	count := 0
+	scanner := bufio.NewScanner(f.storageReader.file)
+	for scanner.Scan() {
+		count++
+	}
+
+	if err := scanner.Err(); err != nil {
+		return 0, fmt.Errorf("ошибка при сканировании файла: %s", err)
+	}
+
+	return count, nil
+}
+
 // Item - структура для хранения ссылки в файле
 type Item struct {
-	Hash string
-	URL  string
+	UUID        int    `json:"uuid"`
+	ShortURL    string `json:"short_url"`
+	OriginalURL string `json:"original_url"`
 }
