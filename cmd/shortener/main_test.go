@@ -1,123 +1,89 @@
 package main
 
 import (
-	"encoding/json"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/borismarvin/shortener_url.git/internal/app/handlers"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestHandleRedirect(t *testing.T) {
-	m := idToURLMap{
-		links: map[string]string{
-			"123": "https://practicum.yandex.ru/",
+func TestPostUrl(t *testing.T) {
+	type want struct {
+		response   string
+		statusCode int
+	}
+
+	tests := []struct {
+		name   string
+		url    string
+		method string
+		body   io.Reader
+		want   want
+	}{
+		{
+			name:   "Получение короткой ссылки по полной",
+			url:    "/",
+			method: http.MethodPost,
+			body:   strings.NewReader("http://ya.ru?x=fljdlfsdf&y=rweurowieur&z=sdkfhsdfisdf"),
+			want: want{
+				statusCode: http.StatusCreated,
+				response:   "http://127.0.0.1:8080/d41d8cd98f00b204e9800998ecf8427e",
+			},
 		},
-		id:   "123",
-		base: "http://localhost:8080/",
-	}
-	shortenedURL := m.base + m.id
-	req, err := http.NewRequest("GET", shortenedURL, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(m.handleRedirect)
-
-	handler.ServeHTTP(rr, req)
-
-	if status := rr.Code; status != http.StatusTemporaryRedirect {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusFound)
+		{
+			name:   "Получение полной ссылки по короткой",
+			url:    "/b64da5d0149024b5b58c04c9fe758923",
+			method: http.MethodGet,
+			body:   nil,
+			want: want{
+				statusCode: http.StatusTemporaryRedirect,
+			},
+		},
 	}
 
-	expectedLocation := m.links[m.id]
-	if location := rr.Header().Get("Location"); location != expectedLocation {
-		t.Errorf("handler returned unexpected location header: got %v want %v",
-			location, expectedLocation)
+	handlers.Storage, _ = handlers.NewFileStorage("./db_test")
+	handlers.BaseURL = "http://127.0.0.1:8080"
+
+	r := router()
+	ts := httptest.NewServer(r)
+
+	defer ts.Close()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			t.Logf(tt.name)
+
+			response, body := testRequest(t, ts, tt.method, tt.url)
+
+			defer response.Body.Close()
+
+			assert.Equal(t, tt.want.statusCode, response.StatusCode)
+
+			if tt.want.response != "" {
+				assert.Equal(t, tt.want.response, body)
+			}
+		})
 	}
 }
 
-func TestHandleShortenURL(t *testing.T) {
-	m := idToURLMap{
-		links: map[string]string{
-			"123": "https://practicum.yandex.ru/",
-		},
-		id:   "123",
-		base: "http://localhost:8080/",
-	}
-	originalURL := m.links[m.id]
-	body := strings.NewReader("https://practicum.yandex.ru/")
-	req, err := http.NewRequest("POST", "/", body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	rr := httptest.NewRecorder()
-	m.handleShortenURL(rr, req)
+func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.Response, string) {
+	req, err := http.NewRequest(method, ts.URL+path, nil)
+	require.NoError(t, err)
 
-	if rr.Code != http.StatusCreated {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			rr.Code, http.StatusCreated)
-	}
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
 
-	expectedContentType := "text/plain"
-	if contentType := rr.Header().Get("Content-Type"); contentType != expectedContentType {
-		t.Errorf("handler returned unexpected Content-Type header: got %v want %v",
-			contentType, expectedContentType)
-	}
+	respBody, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
 
-	expectedURL := m.base + "/" + m.id
-	bodyBytes := rr.Body.Bytes()
-	if string(bodyBytes) != expectedURL {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			string(bodyBytes), expectedURL)
-	}
+	defer resp.Body.Close()
 
-	if url := m.links[m.id]; url != originalURL {
-		t.Errorf("handler failed to add URL to map: got %v want %v",
-			url, originalURL)
-	}
-}
-
-func TestHandleShortenURLJSON(t *testing.T) {
-	m := idToURLMap{
-		links: map[string]string{
-			"123": "https://practicum.yandex.ru/",
-		},
-		id:   "123",
-		base: "http://localhost:8080",
-	}
-	originalURL := m.links[m.id]
-	body := strings.NewReader(`{"url":"https://practicum.yandex.ru/"}`)
-	req, err := http.NewRequest("POST", "/api/shorten", body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	rr := httptest.NewRecorder()
-	m.handleShortenURLJSON(rr, req)
-
-	if rr.Code != http.StatusCreated {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			rr.Code, http.StatusCreated)
-	}
-
-	expectedContentType := "application/json"
-	if contentType := rr.Header().Get("Content-Type"); contentType != expectedContentType {
-		t.Errorf("handler returned unexpected Content-Type header: got %v want %v",
-			contentType, expectedContentType)
-	}
-	var result GetData
-	result.Result = m.base + "/" + m.id
-	bodyBytes := rr.Body.Bytes()
-	expecetedResult, _ := json.Marshal(result)
-	if string(bodyBytes) != string(expecetedResult) {
-		t.Errorf("handler returned unexpected body: got %v want %v",
-			string(bodyBytes), result)
-	}
-
-	if url := m.links[m.id]; url != originalURL {
-		t.Errorf("handler failed to add URL to map: got %v want %v",
-			url, originalURL)
-	}
+	return resp, string(respBody)
 }
