@@ -105,7 +105,7 @@ func (f *FileStorage) Find(hash string) (link string, err error) {
 
 	_, err = f.storageReader.file.Seek(0, io.SeekStart)
 	if err != nil {
-		return "", fmt.Errorf("Ошибка поиска в файле: %w", err)
+		return "", fmt.Errorf("ошибка поиска в файле: %w", err)
 	}
 
 	for {
