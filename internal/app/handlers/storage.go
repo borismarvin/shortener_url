@@ -6,11 +6,9 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sync"
 )
 
 type FileStorage struct {
-	mx            sync.Mutex
 	storageReader *reader
 	storageWriter *writer
 	currentID     int // Текущий индекс записи
@@ -83,11 +81,8 @@ func (c *reader) Close() error {
 
 // Save - сохраняет ID и ссылку в файле
 func (f *FileStorage) Save(hash string, url string) error {
-	f.mx.Lock()
-	defer f.mx.Unlock()
-
 	if ok, _ := f.IsEmpty(); ok {
-		f.currentID = 0
+		f.currentID = 1
 	} else {
 		lines, err := f.CountLines()
 		if err != nil {
@@ -105,22 +100,20 @@ func (f *FileStorage) Save(hash string, url string) error {
 	return nil
 }
 
-// Find searches for a URL in the file based on the given hash
+// Найт url в файле по хэшу
 func (f *FileStorage) Find(hash string) (link string, err error) {
-	f.mx.Lock()
-	defer f.mx.Unlock()
 
 	_, err = f.storageReader.file.Seek(0, io.SeekStart)
 	if err != nil {
-		return "", fmt.Errorf("error seeking in the database: %s", err)
+		return "", fmt.Errorf("Ошибка поиска в файле: %w", err)
 	}
 
 	for {
 		item, err := f.storageReader.Read()
-		if err == io.EOF { // No more items in the file
-			return "", fmt.Errorf("link not found for hash: %s", hash)
+		if err == io.EOF { // В файле больше нет данных
+			return "", fmt.Errorf("url нет для такого хэша: %s: %w", hash, err)
 		} else if err != nil {
-			return "", fmt.Errorf("error reading from the database: %s", err)
+			return "", fmt.Errorf("ошибка чтения из файла: %w", err)
 		}
 
 		if item.ShortURL == hash {
@@ -139,6 +132,7 @@ func (f *FileStorage) IsEmpty() (bool, error) {
 	return fileInfo.Size() == 0, nil
 }
 
+// считаем сколько строк в файле
 func (f *FileStorage) CountLines() (int, error) {
 	_, err := f.storageReader.file.Seek(0, io.SeekStart)
 	if err != nil {

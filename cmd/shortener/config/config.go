@@ -3,13 +3,13 @@ package config
 type Args struct {
 	StartAddr string
 	BaseAddr  string
-	DBPath    string
+	FilePath  string
 }
 
 type GetArgsBuilder interface {
 	SetStart(string) GetArgsBuilder
 	SetBase(string) GetArgsBuilder
-	SetDB(string) GetArgsBuilder
+	SetFile(string) GetArgsBuilder
 	Build() *Args
 }
 type ConcreteGetArgsBuilder struct {
@@ -29,8 +29,8 @@ func (cgab *ConcreteGetArgsBuilder) SetBase(baseAddr string) GetArgsBuilder {
 	cgab.args.BaseAddr = baseAddr
 	return cgab
 }
-func (cgab *ConcreteGetArgsBuilder) SetDB(dbPath string) GetArgsBuilder {
-	cgab.args.DBPath = dbPath
+func (cgab *ConcreteGetArgsBuilder) SetFile(filePath string) GetArgsBuilder {
+	cgab.args.FilePath = filePath
 	return cgab
 }
 func (cgab *ConcreteGetArgsBuilder) Build() *Args {

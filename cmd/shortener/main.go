@@ -14,14 +14,14 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func InitializeConfig(startAddr string, baseAddr string, dbPath string) config.Args {
+func InitializeConfig(startAddr string, baseAddr string, filePath string) config.Args {
 	envStartAddr := os.Getenv("SERVER_ADDRESS")
 	envBaseAddr := os.Getenv("BASE_ADDRESS")
-	envDBPath := os.Getenv("FILE_STORAGE_PATH")
+	envFilePath := os.Getenv("FILE_STORAGE_PATH")
 
 	flag.StringVar(&startAddr, "a", "localhost:8080", "HTTP server start address")
 	flag.StringVar(&baseAddr, "b", "http://localhost:8080", "Base address")
-	flag.StringVar(&dbPath, "f", "./db", "Database path")
+	flag.StringVar(&filePath, "f", "/tmp/short-url-db.json", "File storage path")
 	flag.Parse()
 
 	if envStartAddr != "" {
@@ -30,8 +30,8 @@ func InitializeConfig(startAddr string, baseAddr string, dbPath string) config.A
 	if envBaseAddr != "" {
 		baseAddr = envBaseAddr
 	}
-	if envDBPath != "" {
-		dbPath = envDBPath
+	if envFilePath != "" {
+		filePath = envFilePath
 	}
 	flag.Parse()
 
@@ -39,7 +39,7 @@ func InitializeConfig(startAddr string, baseAddr string, dbPath string) config.A
 	args := builder.
 		SetStart(startAddr).
 		SetBase(baseAddr).
-		SetDB(dbPath).Build()
+		SetFile(filePath).Build()
 	return *args
 }
 
@@ -51,7 +51,7 @@ func main() {
 
 	logger.Initialize()
 	handlers.BaseURL = args.BaseAddr
-	handlers.Storage, _ = handlers.NewFileStorage(args.DBPath)
+	handlers.Storage, _ = handlers.NewFileStorage(args.FilePath)
 
 	http.ListenAndServe(args.StartAddr, r)
 }

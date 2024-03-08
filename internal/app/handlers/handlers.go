@@ -38,7 +38,11 @@ func APICreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
 
 	url.URL = shortURL(url.URL)
 
-	resp, _ := json.Marshal(response(url))
+	resp, err := json.Marshal(response(url))
+	if err != nil {
+		http.Error(w, "Ошибка при кодировании JSON", http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Add("Content-Type", "application/json")
 	w.Header().Add("Accept", "application/json")
@@ -48,8 +52,11 @@ func APICreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
 
 // CreateShortURLHandler — создает короткий урл.
 func CreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
-	body, _ := io.ReadAll(r.Body)
-
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Ошибка при чтении тела запроса", http.StatusBadRequest)
+		return
+	}
 	defer r.Body.Close()
 
 	sURL := shortURL(string(body))
@@ -67,7 +74,7 @@ func GetShortURLHandler(w http.ResponseWriter, r *http.Request) {
 	u, err := getURLByHash(hash)
 
 	if err != nil {
-		fmt.Printf("Cannot find full url. Error - %s", err)
+		fmt.Printf("Невозможно найти сслыку по хэшу - %s: %s", hash, err)
 	}
 
 	w.Header().Add("Location", u)
