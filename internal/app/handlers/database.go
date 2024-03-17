@@ -1,36 +1,27 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
-	"fmt"
+	"log"
+	"time"
 
 	_ "github.com/lib/pq"
 )
 
-var DatabaseName string
+var DSN string
 
-const (
-	host     = "localhost"
-	port     = 5432
-	user     = "postgres"
-	password = "123"
-)
-
-func CheckDBConn(DatabaseName string) (err error) {
-	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
-		"password=%s dbname=%s sslmode=disable",
-		host, port, user, password, DatabaseName)
-	db, err := sql.Open("postgres", psqlInfo)
+func Ping() error {
+	db, err := sql.Open("postgres", DSN) // mysql || postgres
 	if err != nil {
 		panic(err)
+	} else {
+		log.Println(err)
 	}
-	defer db.Close()
 
-	err = db.Ping()
-	if err != nil {
-		panic(err)
-	}
-	return
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	return db.PingContext(ctx)
 }
 
 // func (d *DBStorage) CheckDBConn(w http.ResponseWriter, r *http.Request) {

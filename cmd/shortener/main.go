@@ -23,7 +23,7 @@ func InitializeConfig(startAddr string, baseAddr string, filePath string, databa
 	flag.StringVar(&startAddr, "a", "localhost:8080", "HTTP server start address")
 	flag.StringVar(&baseAddr, "b", "http://localhost:8080", "Base address")
 	flag.StringVar(&filePath, "f", "/tmp/short-url-db.json", "File storage path")
-	flag.StringVar(&database, "d", "db", "Database file")
+	flag.StringVar(&database, "d", "host=localhost port=5432 user=postgres password=123 dbname=db sslmode=disable", "Database file")
 	flag.Parse()
 
 	if envStartAddr != "" {
@@ -58,7 +58,7 @@ func main() {
 	logger.Initialize()
 	handlers.BaseURL = args.BaseAddr
 	handlers.Storage, _ = handlers.NewFileStorage(args.FilePath)
-	handlers.DatabaseName = args.Database
+	handlers.DSN = args.Database
 	http.ListenAndServe(args.StartAddr, r)
 }
 
@@ -70,7 +70,7 @@ func router() (r *chi.Mux) {
 	r.Post("/", handlers.CreateShortURLHandler)
 	r.Post("/api/shorten", handlers.APICreateShortURLHandler)
 	r.Get("/{hash}", handlers.GetShortURLHandler)
-	r.Get("/ping", handlers.PingPong)
+	r.Get("/ping", handlers.PingHandler)
 
 	return r
 }

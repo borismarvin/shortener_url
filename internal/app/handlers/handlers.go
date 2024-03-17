@@ -117,11 +117,16 @@ func getURLByHash(hash string) (url string, err error) {
 }
 
 // првоеряет соединение с базой данных
-func PingPong(w http.ResponseWriter, r *http.Request) {
-	if CheckDBConn(DatabaseName) != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	} else {
-		w.WriteHeader(http.StatusOK)
+func PingHandler(w http.ResponseWriter, r *http.Request) {
+	err := Ping()
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
+
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
 
 }
