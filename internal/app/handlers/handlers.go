@@ -5,14 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 )
 
 var BaseURL string
-
 var Storage *FileStorage
 
 var urls = map[string]string{}
@@ -116,4 +114,19 @@ func getURLByHash(hash string) (url string, err error) {
 		u, err = Storage.Find(hash)
 	}
 	return u, err
+}
+
+// првоеряет соединение с базой данных
+func PingHandler(w http.ResponseWriter, r *http.Request) {
+	err := Ping()
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
+
 }
