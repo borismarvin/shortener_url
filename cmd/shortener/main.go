@@ -3,31 +3,25 @@ package main
 
 import (
 	"flag"
-	"fmt"
-	"io"
-	"math/rand"
 	"net/http"
 	"os"
 
+	middlewares "github.com/borismarvin/shortener_url.git/internal/app/middlewares"
+
 	"github.com/borismarvin/shortener_url.git/cmd/shortener/config"
-	"github.com/gorilla/mux"
+	handlers "github.com/borismarvin/shortener_url.git/internal/app/handlers"
+	"github.com/borismarvin/shortener_url.git/internal/app/logger"
+	"github.com/go-chi/chi/v5"
 )
 
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-const keyLength = 6
-
-type idToURLMap struct {
-	links map[string]string
-	id    string
-	base  string
-}
-
-func InitializeConfig(startAddr string, baseAddr string) config.Args {
+func InitializeConfig(startAddr string, baseAddr string, filePath string) config.Args {
 	envStartAddr := os.Getenv("SERVER_ADDRESS")
 	envBaseAddr := os.Getenv("BASE_ADDRESS")
+	envFilePath := os.Getenv("FILE_STORAGE_PATH")
 
 	flag.StringVar(&startAddr, "a", "localhost:8080", "HTTP server start address")
 	flag.StringVar(&baseAddr, "b", "http://localhost:8080", "Base address")
+	flag.StringVar(&filePath, "f", "/tmp/short-url-db.json", "File storage path")
 	flag.Parse()
 
 	if envStartAddr != "" {
@@ -36,83 +30,40 @@ func InitializeConfig(startAddr string, baseAddr string) config.Args {
 	if envBaseAddr != "" {
 		baseAddr = envBaseAddr
 	}
+	if envFilePath != "" {
+		filePath = envFilePath
+	}
 	flag.Parse()
 
 	builder := config.NewGetArgsBuilder()
 	args := builder.
 		SetStart(startAddr).
-		SetBase(baseAddr).Build()
+		SetBase(baseAddr).
+		SetFile(filePath).Build()
 	return *args
 }
 
 func main() {
 
-	var startAddr, baseAddr string
+	var startAddr, baseAddr, dbPath string
+	r := router()
+	args := InitializeConfig(startAddr, baseAddr, dbPath)
 
-	args := InitializeConfig(startAddr, baseAddr)
+	logger.Initialize()
+	handlers.BaseURL = args.BaseAddr
+	handlers.Storage, _ = handlers.NewFileStorage(args.FilePath)
 
-	r := mux.NewRouter()
-
-	shortener := idToURLMap{
-		links: make(map[string]string),
-		base:  args.BaseAddr,
-	}
-	shortener.id = generateID()
-	shortenedURL := fmt.Sprintf("/%s", shortener.id)
-	r.HandleFunc(shortenedURL, shortener.handleRedirect)
-	r.HandleFunc("/", shortener.handleShortenURL)
-	http.Handle("/", r)
 	http.ListenAndServe(args.StartAddr, r)
 }
 
-func (iu idToURLMap) handleShortenURL(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
+func router() (r *chi.Mux) {
+	r = chi.NewRouter()
 
-	url, err := decodeRequestBody(w, r)
-	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-	id := iu.id
-	iu.links[id] = url
+	r.Use(middlewares.Decompress)
 
-	shortenedURL := iu.base + "/" + id
-	w.WriteHeader(http.StatusCreated)
-	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte(shortenedURL))
-}
+	r.Post("/", handlers.CreateShortURLHandler)
+	r.Post("/api/shorten", handlers.APICreateShortURLHandler)
+	r.Get("/{hash}", handlers.GetShortURLHandler)
 
-func (iu idToURLMap) handleRedirect(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	id := iu.id
-	originalURL, ok := iu.links[id]
-	if !ok {
-		http.Error(w, "Invalid short URL", http.StatusBadRequest)
-		return
-	}
-
-	http.Redirect(w, r, originalURL, http.StatusTemporaryRedirect)
-}
-func decodeRequestBody(w http.ResponseWriter, r *http.Request) (string, error) {
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Error reading request body", http.StatusBadRequest)
-	}
-	return string(body), err
-
-}
-
-func generateID() string {
-	shortKey := make([]byte, keyLength)
-	for i := range shortKey {
-		shortKey[i] = letterBytes[rand.Intn(len(letterBytes))]
-	}
-	return string(shortKey)
+	return r
 }
