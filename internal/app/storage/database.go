@@ -66,18 +66,6 @@ func (r *DBRepository) Save(url *types.Item) (err error) {
 	return err
 }
 
-func (r *DBRepository) SaveBatch(url []*types.Item) (err error) {
-	if r.DB == nil {
-		err = errors.New("нет подключения к бд")
-		return
-	}
-
-	_, err = r.DB.NamedExec(`INSERT INTO urls (hash, uuid, url, short_url)
-        VALUES (:hash, :uuid, :url, :short_url)`, url)
-
-	return err
-}
-
 func (r *DBRepository) FindByHash(hash string) (exist bool, url *types.Item, err error) {
 	if r.DB == nil {
 		exist = false

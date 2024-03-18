@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -152,44 +151,6 @@ func APICreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Accept", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	w.Write(resp)
-}
-
-// APICreateShortURLBatchHandler Api для создания коротких урлов пачками
-func APICreateShortURLBatchHandler(w http.ResponseWriter, r *http.Request) {
-	var incomingData []batchURL
-
-	// Обрабатываем входящий json
-	if err := json.NewDecoder(r.Body).Decode(&incomingData); err != nil {
-		fmt.Println(err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	var urls []*types.Item
-	var resp []*shortenBatchURL
-	uuid := middlewares.UserSignedCookie.UUID
-
-	for _, url := range incomingData {
-		shortURL := fmt.Sprintf("%s/%s", BaseURL, url.CorrelationID)
-
-		urls = append(urls, &types.Item{
-			UUID:     uuid,
-			Hash:     url.CorrelationID,
-			URL:      url.OriginalURL,
-			ShortURL: shortURL,
-		})
-		resp = append(resp, &shortenBatchURL{
-			CorrelationID: url.CorrelationID,
-			ShortURL:      shortURL,
-		})
-	}
-
-	response, _ := json.Marshal(resp)
-
-	w.Header().Add("Content-Type", "application/json")
-	w.Header().Add("Accept", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	w.Write(response)
 }
 
 // PingHandler проверяет соединение с базой
