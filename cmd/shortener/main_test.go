@@ -2,7 +2,6 @@ package main
 
 import (
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -112,7 +111,7 @@ func testRequest(t *testing.T, method string, path string, body io.Reader) (*htt
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 
 	defer resp.Body.Close()
