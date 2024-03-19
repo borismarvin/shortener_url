@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 
@@ -49,7 +48,7 @@ type userURL struct {
 
 // CreateShortURLHandler — создает короткий урл.
 func CreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
-	originalURL, _ := ioutil.ReadAll(r.Body)
+	originalURL, _ := io.ReadAll(r.Body)
 
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
