@@ -9,6 +9,8 @@ import (
 	"time"
 
 	shortenerErrors "github.com/borismarvin/shortener_url.git/internal/app/errors"
+
+	//_ "github.com/go-sql-driver/mysql"
 	"github.com/borismarvin/shortener_url.git/internal/app/types"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -62,6 +64,18 @@ func (r *DBRepository) Save(url *types.URL) (err error) {
 
 	_, err = r.DB.NamedExec(`INSERT INTO urls (hash, uuid, url, short_url)
 		VALUES (:hash, :uuid, :url, :short_url)`, url)
+
+	return err
+}
+
+func (r *DBRepository) SaveBatch(url []*types.URL) (err error) {
+	if r.DB == nil {
+		err = errors.New("нет подключения к бд")
+		return
+	}
+
+	_, err = r.DB.NamedExec(`INSERT INTO urls (hash, uuid, url, short_url)
+        VALUES (:hash, :uuid, :url, :short_url)`, url)
 
 	return err
 }

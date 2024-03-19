@@ -1,11 +1,11 @@
 package storage
 
 import (
+	"github.com/borismarvin/shortener_url.git/internal/app/types"
+
 	"encoding/json"
 	"os"
 	"sync"
-
-	"github.com/borismarvin/shortener_url.git/internal/app/types"
 )
 
 func newWriter(fileName string) (*writer, error) {

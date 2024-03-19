@@ -7,8 +7,6 @@ import (
 	"github.com/borismarvin/shortener_url.git/internal/app"
 )
 
-var BaseURL string
-
 // GetShortURL создает короткий урл из полного и возвращает хеш
 func GetShortURL(value string) (hash string, shortURL string) {
 	h := md5.New()

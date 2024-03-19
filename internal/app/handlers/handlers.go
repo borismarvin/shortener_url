@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/borismarvin/shortener_url.git/internal/app/storage"
 	"github.com/borismarvin/shortener_url.git/internal/app/types"
 	"github.com/borismarvin/shortener_url.git/internal/app/utils"
+
 	"github.com/go-chi/chi/v5"
 )
 
@@ -47,7 +49,7 @@ type userURL struct {
 
 // CreateShortURLHandler — создает короткий урл.
 func CreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
-	originalURL, _ := io.ReadAll(r.Body)
+	originalURL, _ := ioutil.ReadAll(r.Body)
 
 	defer func(Body io.ReadCloser) {
 		err := Body.Close()
@@ -181,6 +183,11 @@ func APICreateShortURLBatchHandler(w http.ResponseWriter, r *http.Request) {
 			CorrelationID: url.CorrelationID,
 			ShortURL:      shortURL,
 		})
+	}
+
+	err := storage.Storage.SaveBatch(urls)
+	if err != nil {
+		fmt.Println(err)
 	}
 
 	response, _ := json.Marshal(resp)

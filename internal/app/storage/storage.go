@@ -6,6 +6,7 @@ import (
 	"os"
 
 	shortenerErrors "github.com/borismarvin/shortener_url.git/internal/app/errors"
+
 	"github.com/borismarvin/shortener_url.git/internal/app/types"
 )
 
@@ -92,6 +93,12 @@ func (s *storage) Save(url *types.URL) (err error) {
 	if err != nil {
 		log.Println(err)
 	}
+
+	return
+}
+
+func (s *storage) SaveBatch(urls []*types.URL) (err error) {
+	err = s.repositories.db.SaveBatch(urls)
 
 	return
 }
