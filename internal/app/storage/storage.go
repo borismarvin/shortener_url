@@ -14,20 +14,20 @@ var Storage *storage
 
 type repository interface {
 	// Save сохраняет объект ссылки в хранилище
-	Save(url *types.Item) error
+	Save(url *types.URL) error
 	// FindByHash ищет урл в хранилище по хешу
-	FindByHash(hash string) (exist bool, url *types.Item, err error)
+	FindByHash(hash string) (exist bool, url *types.URL, err error)
 	// FindByUUID ищет все ссылки пользователя с uuid
-	FindByUUID(uuid string) (exist bool, urls map[string]*types.Item, err error)
+	FindByUUID(uuid string) (exist bool, urls map[string]*types.URL, err error)
 }
 
 type store interface {
 	// Save сохраняет объект ссылки в хранилище
-	Save(url *types.Item) error
+	Save(url *types.URL) error
 	// FindByHash ищет урл в хранилище по хешу
-	FindByHash(hash string) (exist bool, url *types.Item, err error)
+	FindByHash(hash string) (exist bool, url *types.URL, err error)
 	// FindByUUID ищет все ссылки пользователя с uuid
-	FindByUUID(uuid string) (urls map[string]*types.Item, err error)
+	FindByUUID(uuid string) (urls map[string]*types.URL, err error)
 	// Drop чистит memory хранилище, удаляет файл
 	Drop()
 }
@@ -65,7 +65,7 @@ func New(cfg *types.Config) (err error) {
 	return nil
 }
 
-func (s *storage) Save(url *types.Item) (err error) {
+func (s *storage) Save(url *types.URL) (err error) {
 	// Сохраняем в память
 	err = s.repositories.memory.Save(url)
 	// если не получилось записать в память - все плохо. выходим
@@ -96,7 +96,7 @@ func (s *storage) Save(url *types.Item) (err error) {
 	return
 }
 
-func (s *storage) FindByHash(hash string) (exist bool, url *types.Item, err error) {
+func (s *storage) FindByHash(hash string) (exist bool, url *types.URL, err error) {
 	// Сначала в бд
 	exist, url, err = s.repositories.db.FindByHash(hash)
 	if exist {
@@ -118,7 +118,7 @@ func (s *storage) FindByHash(hash string) (exist bool, url *types.Item, err erro
 	return
 }
 
-func (s *storage) FindByUUID(uuid string) (urls map[string]*types.Item, err error) {
+func (s *storage) FindByUUID(uuid string) (urls map[string]*types.URL, err error) {
 	// Ищем в памяти
 	um, e := s.repositories.memory.FindByUUID(uuid)
 	if e != nil {
@@ -131,7 +131,7 @@ func (s *storage) FindByUUID(uuid string) (urls map[string]*types.Item, err erro
 		return nil, e
 	}
 
-	urls = map[string]*types.Item{}
+	urls = map[string]*types.URL{}
 	for _, item := range um {
 		urls[item.Hash] = item
 	}
@@ -143,7 +143,7 @@ func (s *storage) FindByUUID(uuid string) (urls map[string]*types.Item, err erro
 }
 
 func (s *storage) Drop() {
-	s.repositories.memory.items = map[string]*types.Item{}
+	s.repositories.memory.items = map[string]*types.URL{}
 	os.Remove(s.cfg.DBPath)
 }
 

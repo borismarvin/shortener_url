@@ -10,7 +10,7 @@ type Config struct {
 }
 
 // URL - структура для url
-type Item struct {
+type URL struct {
 	UUID     string `db:"uuid"`
 	Hash     string `db:"hash"`
 	URL      string `db:"url"`

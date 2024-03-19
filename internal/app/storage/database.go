@@ -38,7 +38,7 @@ func NewDBRepository(cfg *types.Config) *DBRepository {
 	return repo
 }
 
-func (r *DBRepository) Save(url *types.Item) (err error) {
+func (r *DBRepository) Save(url *types.URL) (err error) {
 	if r.DB == nil {
 		return fmt.Errorf("%w", shortenerErrors.ErrNoDBConnection)
 	}
@@ -66,7 +66,7 @@ func (r *DBRepository) Save(url *types.Item) (err error) {
 	return err
 }
 
-func (r *DBRepository) FindByHash(hash string) (exist bool, url *types.Item, err error) {
+func (r *DBRepository) FindByHash(hash string) (exist bool, url *types.URL, err error) {
 	if r.DB == nil {
 		exist = false
 		url = nil
@@ -88,7 +88,7 @@ func (r *DBRepository) FindByHash(hash string) (exist bool, url *types.Item, err
 		return
 	}
 
-	url = &types.Item{}
+	url = &types.URL{}
 	for rows.Next() {
 		exist = true
 		rows.Scan(&url.Hash, &url.UUID, &url.URL, &url.ShortURL)
@@ -97,7 +97,7 @@ func (r *DBRepository) FindByHash(hash string) (exist bool, url *types.Item, err
 	return
 }
 
-func (r *DBRepository) FindByUUID(uuid string) (exist bool, urls map[string]*types.Item, err error) {
+func (r *DBRepository) FindByUUID(uuid string) (exist bool, urls map[string]*types.URL, err error) {
 	if r.DB == nil {
 		exist = false
 		urls = nil
@@ -118,7 +118,7 @@ func (r *DBRepository) FindByUUID(uuid string) (exist bool, urls map[string]*typ
 		return
 	}
 
-	urls = map[string]*types.Item{}
+	urls = map[string]*types.URL{}
 
 	return
 }

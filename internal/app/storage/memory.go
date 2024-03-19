@@ -9,16 +9,16 @@ import (
 )
 
 type MemoryRepository struct {
-	items map[string]*types.Item
+	items map[string]*types.URL
 }
 
 func NewMemoryRepository() *MemoryRepository {
 	return &MemoryRepository{
-		items: map[string]*types.Item{},
+		items: map[string]*types.URL{},
 	}
 }
 
-func (r *MemoryRepository) Save(url *types.Item) error {
+func (r *MemoryRepository) Save(url *types.URL) error {
 	hash, _ := utils.GetShortURL(url.URL)
 
 	// Дубли не храним
@@ -30,7 +30,7 @@ func (r *MemoryRepository) Save(url *types.Item) error {
 	}
 }
 
-func (r *MemoryRepository) FindByHash(hash string) (exist bool, url *types.Item, err error) {
+func (r *MemoryRepository) FindByHash(hash string) (exist bool, url *types.URL, err error) {
 	exist = false
 	url = nil
 	err = nil
@@ -45,8 +45,8 @@ func (r *MemoryRepository) FindByHash(hash string) (exist bool, url *types.Item,
 	return
 }
 
-func (r *MemoryRepository) FindByUUID(uuid string) (urls map[string]*types.Item, err error) {
-	urls = map[string]*types.Item{}
+func (r *MemoryRepository) FindByUUID(uuid string) (urls map[string]*types.URL, err error) {
+	urls = map[string]*types.URL{}
 	err = nil
 
 	for _, item := range r.items {
