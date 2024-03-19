@@ -70,7 +70,6 @@ func CreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Если такой url уже есть - отдаем соответствующий статус
 	if errors.Is(err, shortenerErrors.ErrURLConflict) {
-		w.WriteHeader(http.StatusConflict)
 		w.Write([]byte(url.ShortURL))
 		return
 	}
@@ -78,7 +77,6 @@ func CreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
 	// Другие ошибки при сохранении в хранилище
 	if err != nil {
 		log.Printf("CreateShortURLHandler. Не удалось сохранить урл в хранилище. %s", err)
-		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 		return
 	}
@@ -99,7 +97,6 @@ func GetShortURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 		return
 	}
