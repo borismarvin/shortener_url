@@ -5,7 +5,6 @@ import (
 
 	"encoding/json"
 	"os"
-	"sync"
 )
 
 func newWriter(fileName string) (*writer, error) {
@@ -74,15 +73,11 @@ func (c *reader) Close() error {
 }
 
 type FileRepository struct {
-	mx            sync.Mutex
 	storageReader *reader
 	storageWriter *writer
 }
 
 func (r *FileRepository) Save(url *types.URL) error {
-	r.mx.Lock()
-	defer r.mx.Unlock()
-
 	err := r.storageWriter.Write(url)
 	if err != nil {
 		return err
@@ -92,49 +87,20 @@ func (r *FileRepository) Save(url *types.URL) error {
 }
 
 func (r *FileRepository) FindByHash(hash string) (exist bool, url *types.URL, err error) {
-	r.mx.Lock()
-	defer r.mx.Unlock()
-
 	_, err = r.storageReader.file.Seek(0, 0)
 	if err != nil {
 		return false, &types.URL{}, err
 	}
 
 	for {
-		item, err := r.storageReader.Read()
+		url, err := r.storageReader.Read()
 
 		if err != nil {
 			return false, nil, err
 		}
 
-		if item.Hash == hash {
-			return true, item, nil
+		if url.Hash == hash {
+			return true, url, nil
 		}
 	}
-}
-
-func (r *FileRepository) FindByUUID(uuid string) (urls map[string]*types.URL, err error) {
-	r.mx.Lock()
-	defer r.mx.Unlock()
-
-	urls = map[string]*types.URL{}
-
-	_, err = r.storageReader.file.Seek(0, 0)
-	if err != nil {
-		return map[string]*types.URL{}, err
-	}
-
-	for {
-		item, err := r.storageReader.Read()
-
-		if err != nil {
-			break
-		}
-
-		if item.UUID == uuid {
-			urls[item.Hash] = item
-		}
-	}
-
-	return urls, nil
 }

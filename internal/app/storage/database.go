@@ -8,8 +8,6 @@ import (
 	"log"
 	"time"
 
-	shortenerErrors "github.com/borismarvin/shortener_url.git/internal/app/errors"
-
 	//_ "github.com/go-sql-driver/mysql"
 	"github.com/borismarvin/shortener_url.git/internal/app/types"
 	"github.com/jmoiron/sqlx"
@@ -42,9 +40,8 @@ func NewDBRepository(cfg *types.Config) *DBRepository {
 
 func (r *DBRepository) Save(url *types.URL) (err error) {
 	if r.DB == nil {
-		return fmt.Errorf("%w", shortenerErrors.ErrNoDBConnection)
+		fmt.Println("ошибка подлкючения к бд")
 	}
-
 	rows, err := r.DB.QueryContext(context.Background(), "SELECT * FROM urls where 'hash' = $1", url.Hash)
 
 	defer func(rows *sql.Rows) {
@@ -59,23 +56,11 @@ func (r *DBRepository) Save(url *types.URL) (err error) {
 	}
 
 	if rows.Next() {
-		return fmt.Errorf("%w", shortenerErrors.ErrURLConflict)
+		fmt.Println("конфликт url")
 	}
 
 	_, err = r.DB.NamedExec(`INSERT INTO urls (hash, uuid, url, short_url)
 		VALUES (:hash, :uuid, :url, :short_url)`, url)
-
-	return err
-}
-
-func (r *DBRepository) SaveBatch(url []*types.URL) (err error) {
-	if r.DB == nil {
-		err = errors.New("нет подключения к бд")
-		return
-	}
-
-	_, err = r.DB.NamedExec(`INSERT INTO urls (hash, uuid, url, short_url)
-        VALUES (:hash, :uuid, :url, :short_url)`, url)
 
 	return err
 }
@@ -107,32 +92,6 @@ func (r *DBRepository) FindByHash(hash string) (exist bool, url *types.URL, err 
 		exist = true
 		rows.Scan(&url.Hash, &url.UUID, &url.URL, &url.ShortURL)
 	}
-
-	return
-}
-
-func (r *DBRepository) FindByUUID(uuid string) (exist bool, urls map[string]*types.URL, err error) {
-	if r.DB == nil {
-		exist = false
-		urls = nil
-		err = errors.New("нет подключения к бд")
-		return
-	}
-
-	rows, err := r.DB.QueryContext(context.Background(), "SELECT hash, uuid, url, short_url FROM urls where uuid = $1", uuid)
-	defer func(rows *sql.Rows) {
-		err := rows.Close()
-		if err != nil {
-			log.Println(err)
-		}
-	}(rows)
-
-	if rows.Err() != nil {
-		exist = false
-		return
-	}
-
-	urls = map[string]*types.URL{}
 
 	return
 }

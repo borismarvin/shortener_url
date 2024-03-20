@@ -71,7 +71,6 @@ func Router() (r *chi.Mux) {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Compress(5))
 	r.Use(middlewares.Decompress)
-	r.Use(middlewares.UserCookie)
 
 	r.Post("/", handlers.CreateShortURLHandler)
 	r.Get("/ping", handlers.PingHandler)
