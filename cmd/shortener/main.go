@@ -3,63 +3,64 @@ package main
 
 import (
 	"flag"
-	"log"
 	"net/http"
 	"os"
 
-	"github.com/borismarvin/shortener_url.git/internal/app"
+	"github.com/borismarvin/shortener_url.git/cmd/shortener/config"
+	"github.com/borismarvin/shortener_url.git/internal/app/logger"
 	middlewares "github.com/borismarvin/shortener_url.git/internal/app/middlewares"
-	storage "github.com/borismarvin/shortener_url.git/internal/app/storage"
-	"github.com/caarlos0/env"
 
 	handlers "github.com/borismarvin/shortener_url.git/internal/app/handlers"
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
 )
 
-func main() {
-	r := Router()
+func InitializeConfig(startAddr string, baseAddr string, filePath string, database string) config.Args {
+	envStartAddr := os.Getenv("SERVER_ADDRESS")
+	envBaseAddr := os.Getenv("BASE_ADDRESS")
+	envFilePath := os.Getenv("FILE_STORAGE_PATH")
+	envDatabase := os.Getenv("DATABASE_DSN")
 
-	// Логер
-	flog, err := os.OpenFile(`server.log`, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-	defer flog.Close()
-
-	//log.SetOutput(flog)
-
-	// Переменные окружения в конфиг
-	err = env.Parse(&app.Cfg)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Параметры командной строки в конфиг
-	flag.StringVar(&app.Cfg.ServerAddress, "a", app.Cfg.ServerAddress, "Адрес для запуска сервера")
-	flag.StringVar(&app.Cfg.ServerPort, "server-port", app.Cfg.ServerPort, "Порт сервера")
-	flag.StringVar(&app.Cfg.BaseURL, "b", app.Cfg.BaseURL, "Базовый адрес результирующего сокращённого URL")
-	flag.StringVar(&app.Cfg.DBPath, "f", app.Cfg.DBPath, "Путь к файлу с ссылками")
-	flag.StringVar(&app.Cfg.DatabaseDsn, "d", app.Cfg.DatabaseDsn, "Строка с адресом подключения к БД")
+	flag.StringVar(&startAddr, "a", "localhost:8080", "HTTP server start address")
+	flag.StringVar(&baseAddr, "b", "http://localhost:8080", "Base address")
+	flag.StringVar(&filePath, "f", "/tmp/short-url-db.json", "File storage path")
+	flag.StringVar(&database, "d", "db", "Database file")
 	flag.Parse()
 
-	log.Printf("Starting server on %s", app.Cfg.ServerAddress)
-	log.Println(app.Cfg)
-
-	// инициируем хранилище
-	err = storage.New(&app.Cfg)
-	if err != nil {
-		log.Printf("Не удалось инициировать хранилище. %s", err)
-		return
+	if envStartAddr != "" {
+		startAddr = envStartAddr
 	}
-
-	// запускаем сервер
-	err = http.ListenAndServe(app.Cfg.ServerAddress, r)
-	if err != nil {
-		log.Printf("Не удалось запустить сервер. %s", err)
-		return
+	if envBaseAddr != "" {
+		baseAddr = envBaseAddr
 	}
+	if envFilePath != "" {
+		filePath = envFilePath
+	}
+	if envDatabase != "" {
+		database = envDatabase
+	}
+	flag.Parse()
+
+	builder := config.NewGetArgsBuilder()
+	args := builder.
+		SetStart(startAddr).
+		SetBase(baseAddr).
+		SetFile(filePath).
+		SetDB(database).Build()
+	return *args
+}
+
+func main() {
+
+	var startAddr, baseAddr, filePath, dbPath string
+	r := router()
+	args := InitializeConfig(startAddr, baseAddr, filePath, dbPath)
+
+	logger.Initialize()
+	handlers.BaseURL = args.BaseAddr
+	handlers.Storage, _ = handlers.NewFileStorage(args.FilePath)
+	handlers.DatabaseName = args.Database
+	http.ListenAndServe(args.StartAddr, r)
 }
 
 func Router() (r *chi.Mux) {
@@ -76,6 +77,7 @@ func Router() (r *chi.Mux) {
 	r.Get("/ping", handlers.PingHandler)
 	r.Post("/api/shorten", handlers.APICreateShortURLHandler)
 	r.Get("/{hash}", handlers.GetShortURLHandler)
+	r.Get("/ping", handlers.PingPong)
 
 	return r
 }

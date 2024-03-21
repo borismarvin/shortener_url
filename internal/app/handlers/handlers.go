@@ -140,15 +140,12 @@ func APICreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp)
 }
 
-// PingHandler проверяет соединение с базой
-func PingHandler(w http.ResponseWriter, r *http.Request) {
-	err := storage.Storage.Ping()
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+// првоеряет соединение с базой данных
+func PingPong(w http.ResponseWriter, r *http.Request) {
+	if CheckDBConn(DatabaseName) != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		w.WriteHeader(http.StatusOK)
 	}
 
-	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte("ok"))
 }
