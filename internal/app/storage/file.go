@@ -106,17 +106,17 @@ func (f *FileRepository) Save(url *types.URL) error {
 }
 
 // Найт url в файле по хэшу
-func (r *FileRepository) Find(hash string) (exist bool, url *types.URL, err error) {
-	r.mx.Lock()
-	defer r.mx.Unlock()
+func (f *FileRepository) Find(hash string) (exist bool, url *types.URL, err error) {
+	f.mx.Lock()
+	defer f.mx.Unlock()
 
-	_, err = r.storageReader.file.Seek(0, 0)
+	_, err = f.storageReader.file.Seek(0, 0)
 	if err != nil {
 		return false, &types.URL{}, err
 	}
 
 	for {
-		item, err := r.storageReader.Read()
+		item, err := f.storageReader.Read()
 
 		if err != nil {
 			return false, nil, err
