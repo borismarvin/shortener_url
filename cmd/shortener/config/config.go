@@ -1,44 +1,30 @@
 package config
 
-type Args struct {
-	StartAddr string
-	BaseAddr  string
-	FilePath  string
-	Database  string
+import (
+	"flag"
+
+	"github.com/caarlos0/env/v10"
+)
+
+type Config struct {
+	NetAddr           string `env:"SERVER_ADDRESS"`
+	BaseURIPrefix     string `env:"BASE_URL"`
+	LogLevel          string `env:"LOG_LEVEL"`
+	DBFileStoragePath string `env:"FILE_STORAGE_PATH"`
+	DBStorageConnect  string `env:"DATABASE_DSN"`
 }
 
-type GetArgsBuilder interface {
-	SetStart(string) GetArgsBuilder
-	SetBase(string) GetArgsBuilder
-	SetFile(string) GetArgsBuilder
-	SetDB(string) GetArgsBuilder
-	Build() *Args
-}
-type ConcreteGetArgsBuilder struct {
-	args *Args
-}
+func InitConfig() (config Config) {
+	flag.StringVar(&config.NetAddr, "a", "localhost:8080", "net address host:port")
+	flag.StringVar(&config.BaseURIPrefix, "b", "http://localhost:8080", "base output short URL")
+	flag.StringVar(&config.LogLevel, "l", "info", "log level")
+	flag.StringVar(&config.DBFileStoragePath, "f", "/tmp/short-url-db.json", "database storage path")
+	flag.StringVar(&config.DBStorageConnect, "d", "", "database credentials in format: host=host port=port user=myuser password=xxxx dbname=mydb sslmode=disable")
+	flag.Parse()
 
-func NewGetArgsBuilder() *ConcreteGetArgsBuilder {
-	return &ConcreteGetArgsBuilder{args: &Args{}}
-}
+	if err := env.Parse(&config); err != nil {
+		panic(err.Error())
+	}
 
-func (cgab *ConcreteGetArgsBuilder) SetStart(startAddr string) GetArgsBuilder {
-	cgab.args.StartAddr = startAddr
-	return cgab
-}
-
-func (cgab *ConcreteGetArgsBuilder) SetBase(baseAddr string) GetArgsBuilder {
-	cgab.args.BaseAddr = baseAddr
-	return cgab
-}
-func (cgab *ConcreteGetArgsBuilder) SetFile(filePath string) GetArgsBuilder {
-	cgab.args.FilePath = filePath
-	return cgab
-}
-func (cgab *ConcreteGetArgsBuilder) SetDB(database string) GetArgsBuilder {
-	cgab.args.Database = database
-	return cgab
-}
-func (cgab *ConcreteGetArgsBuilder) Build() *Args {
-	return cgab.args
+	return
 }
