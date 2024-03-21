@@ -2,23 +2,33 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
-	"log"
-	"math/rand"
-	"net/http"
-	"time"
 
-	"github.com/borismarvin/shortener_url.git/internal/app/storage"
+	"log"
+	"net/http"
+
+	"github.com/borismarvin/shortener_url.git/internal/app/middlewares"
+	storage "github.com/borismarvin/shortener_url.git/internal/app/storage"
 	"github.com/borismarvin/shortener_url.git/internal/app/types"
 	"github.com/borismarvin/shortener_url.git/internal/app/utils"
-
 	"github.com/go-chi/chi/v5"
 )
 
 // url для сокращения
 type url struct {
 	URL string `json:"url"`
+}
+
+// batchURL в пакетной обработке
+type batchURL struct {
+	CorrelationID string `json:"correlation_id"`
+	OriginalURL   string `json:"original_url"`
+}
+
+// shortenBatchURL сокращенный урл в пакетной обработке
+type shortenBatchURL struct {
+	CorrelationID string `json:"correlation_id"`
+	ShortURL      string `json:"short_url"`
 }
 
 // Сокращенный url
@@ -32,32 +42,20 @@ type userURL struct {
 	OriginalURL string `json:"original_url"`
 }
 
-const charset = "abcdefghijklmnopqrstuvwxyz" +
-	"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-const length int = 10
-
-var seededRand *rand.Rand = rand.New(
-	rand.NewSource(time.Now().UnixNano()))
-
-func GenerateUUID() string {
-	b := make([]byte, length)
-	for i := range b {
-		b[i] = charset[seededRand.Intn(len(charset))]
-	}
-	return string(b)
-}
-
 // CreateShortURLHandler — создает короткий урл.
 func CreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
-	originalURL, err := io.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Ошибка при чтении тела запроса", http.StatusBadRequest)
-		return
-	}
-	defer r.Body.Close()
+	originalURL, _ := io.ReadAll(r.Body)
 
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Printf("CreateShortURLHandler. %s", err)
+		}
+	}(r.Body)
+
+	uuid := middlewares.UserSignedCookie.UUID
 	hash, shortURL := utils.GetShortURL(string(originalURL))
-	uuid := GenerateUUID()
+
 	url := &types.URL{
 		UUID:     uuid,
 		Hash:     hash,
@@ -65,15 +63,18 @@ func CreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
 		ShortURL: shortURL,
 	}
 
-	err = storage.Storage.Save(url)
+	err := storage.Storage.Save(url)
 
+	// Если такой url уже есть - отдаем соответствующий статус
 	if err != nil {
-		fmt.Println("url уже существует")
+		http.Error(w, "Ошибка при чтении тела запроса", http.StatusBadRequest)
+		return
 	}
 
 	// Другие ошибки при сохранении в хранилище
 	if err != nil {
 		log.Printf("CreateShortURLHandler. Не удалось сохранить урл в хранилище. %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(err.Error()))
 		return
 	}
@@ -94,7 +95,9 @@ func GetShortURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		fmt.Printf("Невозможно найти сслыку по хэшу - %s: %s", hash, err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
 	}
 
 	w.Header().Add("Location", url.URL)
@@ -112,8 +115,9 @@ func APICreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	uuid := middlewares.UserSignedCookie.UUID
 	hash, shortURL := utils.GetShortURL(string(u.URL))
-	uuid := GenerateUUID()
+
 	url := &types.URL{
 		UUID:     uuid,
 		Hash:     hash,
@@ -122,10 +126,6 @@ func APICreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err := storage.Storage.Save(url)
-
-	if err != nil {
-		fmt.Println("url уже существует")
-	}
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -140,12 +140,15 @@ func APICreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp)
 }
 
-// првоеряет соединение с базой данных
-func PingPong(w http.ResponseWriter, r *http.Request) {
-	if CheckDBConn(DatabaseName) != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	} else {
-		w.WriteHeader(http.StatusOK)
+// PingHandler проверяет соединение с базой
+func PingHandler(w http.ResponseWriter, r *http.Request) {
+	err := storage.Storage.Ping()
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
+	w.Header().Set("Content-Type", "text/plain")
+	w.Write([]byte("ok"))
 }

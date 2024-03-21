@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"fmt"
 	"log"
 	"os"
 
@@ -16,6 +15,8 @@ type repository interface {
 	Save(url *types.URL) error
 	// FindByHash ищет урл в хранилище по хешу
 	FindByHash(hash string) (exist bool, url *types.URL, err error)
+	// FindByUUID ищет все ссылки пользователя с uuid
+	FindByUUID(uuid string) (exist bool, urls map[string]*types.URL, err error)
 }
 
 type store interface {
@@ -23,6 +24,8 @@ type store interface {
 	Save(url *types.URL) error
 	// FindByHash ищет урл в хранилище по хешу
 	FindByHash(hash string) (exist bool, url *types.URL, err error)
+	// FindByUUID ищет все ссылки пользователя с uuid
+	FindByUUID(uuid string) (urls map[string]*types.URL, err error)
 	// Drop чистит memory хранилище, удаляет файл
 	Drop()
 }
@@ -30,7 +33,7 @@ type store interface {
 type repositories struct {
 	memory *MemoryRepository
 	file   *FileRepository
-	db     *DBRepository
+	db     *DatabaseRepository
 }
 
 type storage struct {
@@ -44,7 +47,7 @@ func New(cfg *types.Config) (err error) {
 	}
 
 	mr := NewMemoryRepository()
-	dbr := NewDBRepository(cfg)
+	dbr := NewDatabaseRepository(cfg)
 	fr, err := NewFileRepository(cfg.DBPath)
 	if err != nil {
 		return err
@@ -70,7 +73,7 @@ func (s *storage) Save(url *types.URL) (err error) {
 	}
 
 	// Сохраняем в файл
-	if exist, _, _ := s.repositories.file.FindByHash(url.Hash); !exist {
+	if exist, _, _ := s.repositories.file.Find(url.Hash); !exist {
 		err = s.repositories.file.Save(url)
 		// не получилось записать в файл - идем дальше
 		if err != nil {
@@ -81,9 +84,6 @@ func (s *storage) Save(url *types.URL) (err error) {
 	// Сохраняем в базу
 	err = s.repositories.db.Save(url)
 	// база опциональна
-	if err != nil {
-		fmt.Println("ошибка подлкючения к бд")
-	}
 	if err != nil {
 		log.Println(err)
 	}
@@ -99,7 +99,7 @@ func (s *storage) FindByHash(hash string) (exist bool, url *types.URL, err error
 	}
 
 	// ищем в файле
-	exist, url, err = s.repositories.file.FindByHash(hash)
+	exist, url, err = s.repositories.file.Find(hash)
 	if exist {
 		return
 	}

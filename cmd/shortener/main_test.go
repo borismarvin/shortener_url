@@ -32,7 +32,7 @@ func setup() {
 	storage.New(&app.Cfg)
 
 	S = suite{
-		Server: httptest.NewServer(Router()),
+		Server: httptest.NewServer(router()),
 	}
 }
 
@@ -70,6 +70,15 @@ func TestPostUrl(t *testing.T) {
 			body:   nil,
 			want: want{
 				statusCode: http.StatusTemporaryRedirect,
+			},
+		},
+		{
+			name:   "Все ссылки пользователя",
+			url:    "/api/user/urls",
+			method: http.MethodGet,
+			body:   nil,
+			want: want{
+				statusCode: http.StatusNoContent,
 			},
 		},
 	}

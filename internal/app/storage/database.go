@@ -8,19 +8,20 @@ import (
 	"log"
 	"time"
 
-	//_ "github.com/go-sql-driver/mysql"
 	"github.com/borismarvin/shortener_url.git/internal/app/types"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
 
-type DBRepository struct {
+var DSN string
+
+type DatabaseRepository struct {
 	DB  *sqlx.DB
 	cfg *types.Config
 }
 
-func NewDBRepository(cfg *types.Config) *DBRepository {
-	repo := &DBRepository{
+func NewDatabaseRepository(cfg *types.Config) *DatabaseRepository {
+	repo := &DatabaseRepository{
 		cfg: cfg,
 		DB:  nil,
 	}
@@ -38,10 +39,20 @@ func NewDBRepository(cfg *types.Config) *DBRepository {
 	return repo
 }
 
-func (r *DBRepository) Save(url *types.URL) (err error) {
+func (r *DatabaseRepository) Ping() error {
 	if r.DB == nil {
-		fmt.Println("ошибка подлкючения к бд")
+		return errors.New("нет подключения к бд")
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	return r.DB.PingContext(ctx)
+}
+func (r *DatabaseRepository) Save(url *types.URL) (err error) {
+	if r.DB == nil {
+		return fmt.Errorf("NO connetction")
+	}
+
 	rows, err := r.DB.QueryContext(context.Background(), "SELECT * FROM urls where 'hash' = $1", url.Hash)
 
 	defer func(rows *sql.Rows) {
@@ -56,7 +67,7 @@ func (r *DBRepository) Save(url *types.URL) (err error) {
 	}
 
 	if rows.Next() {
-		fmt.Println("конфликт url")
+		return fmt.Errorf("URL CONFLICT")
 	}
 
 	_, err = r.DB.NamedExec(`INSERT INTO urls (hash, uuid, url, short_url)
@@ -64,8 +75,7 @@ func (r *DBRepository) Save(url *types.URL) (err error) {
 
 	return err
 }
-
-func (r *DBRepository) FindByHash(hash string) (exist bool, url *types.URL, err error) {
+func (r *DatabaseRepository) FindByHash(hash string) (exist bool, url *types.URL, err error) {
 	if r.DB == nil {
 		exist = false
 		url = nil
@@ -96,17 +106,7 @@ func (r *DBRepository) FindByHash(hash string) (exist bool, url *types.URL, err 
 	return
 }
 
-func (r *DBRepository) Ping() (err error) {
-	if r.DB == nil {
-		return errors.New("нет подключения к бд")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	return r.DB.PingContext(ctx)
-}
-
-func (r *DBRepository) migrate() {
+func (r *DatabaseRepository) migrate() {
 	_, err := r.DB.Exec(`CREATE TABLE IF NOT EXISTS urls
 		(
 			hash      varchar(256) not null,

@@ -1,13 +1,34 @@
 package storage
 
 import (
-	"github.com/borismarvin/shortener_url.git/internal/app/types"
-
+	"bufio"
 	"encoding/json"
+	"fmt"
+	"io"
 	"os"
+	"sync"
+
+	"github.com/borismarvin/shortener_url.git/internal/app/types"
 )
 
-func newWriter(fileName string) (*writer, error) {
+type FileRepository struct {
+	mx            sync.Mutex
+	storageReader *reader
+	storageWriter *writer
+	currentID     int // Текущий индекс записи
+}
+
+type reader struct {
+	file    *os.File
+	decoder *json.Decoder
+}
+
+type writer struct {
+	file    *os.File
+	encoder *json.Encoder
+}
+
+func NewWriter(fileName string) (*writer, error) {
 	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0777)
 	if err != nil {
 		return nil, err
@@ -18,7 +39,7 @@ func newWriter(fileName string) (*writer, error) {
 	}, nil
 }
 
-func newReader(fileName string) (*reader, error) {
+func NewReader(fileName string) (*reader, error) {
 	file, err := os.OpenFile(fileName, os.O_RDONLY|os.O_CREATE, 0777)
 	if err != nil {
 		return nil, err
@@ -29,56 +50,54 @@ func newReader(fileName string) (*reader, error) {
 	}, nil
 }
 
-func NewFileRepository(filename string) (r *FileRepository, err error) {
-	r = &FileRepository{}
-	r.storageReader, err = newReader(filename)
+func NewFileRepository(filename string) (fs *FileRepository, err error) {
+	fs = &FileRepository{}
+	fs.storageReader, err = NewReader(filename)
 	if err != nil {
 		return nil, err
 	}
-	r.storageWriter, err = newWriter(filename)
+	fs.storageWriter, err = NewWriter(filename)
 	if err != nil {
 		return nil, err
 	}
-	return r, nil
+	return fs, nil
 }
 
-type writer struct {
-	file    *os.File
-	encoder *json.Encoder
-}
-
-func (p *writer) Write(url *types.URL) error {
-	return p.encoder.Encode(&url)
+func (p *writer) Write(event *types.URL) error {
+	return p.encoder.Encode(&event)
 }
 
 func (p *writer) Close() error {
 	return p.file.Close()
 }
 
-type reader struct {
-	file    *os.File
-	decoder *json.Decoder
-}
-
 func (c *reader) Read() (*types.URL, error) {
-	item := &types.URL{}
-	if err := c.decoder.Decode(&item); err != nil {
+	event := &types.URL{}
+	if err := c.decoder.Decode(&event); err != nil {
 		return nil, err
 	}
-	return item, nil
+	return event, nil
 }
 
 func (c *reader) Close() error {
 	return c.file.Close()
 }
 
-type FileRepository struct {
-	storageReader *reader
-	storageWriter *writer
-}
+// Save - сохраняет ID и ссылку в файле
+func (f *FileRepository) Save(url *types.URL) error {
+	f.mx.Lock()
+	defer f.mx.Unlock()
+	if ok, _ := f.IsEmpty(); ok {
+		f.currentID = 1
+	} else {
+		lines, err := f.CountLines()
+		if err != nil {
+			return err
+		}
+		f.currentID = lines + 1
+	}
 
-func (r *FileRepository) Save(url *types.URL) error {
-	err := r.storageWriter.Write(url)
+	err := f.storageWriter.Write(url)
 	if err != nil {
 		return err
 	}
@@ -86,21 +105,55 @@ func (r *FileRepository) Save(url *types.URL) error {
 	return nil
 }
 
-func (r *FileRepository) FindByHash(hash string) (exist bool, url *types.URL, err error) {
+// Найт url в файле по хэшу
+func (r *FileRepository) Find(hash string) (exist bool, url *types.URL, err error) {
+	r.mx.Lock()
+	defer r.mx.Unlock()
+
 	_, err = r.storageReader.file.Seek(0, 0)
 	if err != nil {
 		return false, &types.URL{}, err
 	}
 
 	for {
-		url, err := r.storageReader.Read()
+		item, err := r.storageReader.Read()
 
 		if err != nil {
 			return false, nil, err
 		}
 
-		if url.Hash == hash {
-			return true, url, nil
+		if item.Hash == hash {
+			return true, item, nil
 		}
 	}
+}
+
+// IsEmpty проверяет, пуст ли файл
+func (f *FileRepository) IsEmpty() (bool, error) {
+	fileInfo, err := f.storageReader.file.Stat()
+	if err != nil {
+		return false, err
+	}
+
+	return fileInfo.Size() == 0, nil
+}
+
+// считаем сколько строк в файле
+func (f *FileRepository) CountLines() (int, error) {
+	_, err := f.storageReader.file.Seek(0, io.SeekStart)
+	if err != nil {
+		return 0, fmt.Errorf("ошибка при поиске в базе данных: %s", err)
+	}
+
+	count := 0
+	scanner := bufio.NewScanner(f.storageReader.file)
+	for scanner.Scan() {
+		count++
+	}
+
+	if err := scanner.Err(); err != nil {
+		return 0, fmt.Errorf("ошибка при сканировании файла: %s", err)
+	}
+
+	return count, nil
 }
