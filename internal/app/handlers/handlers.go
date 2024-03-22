@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 
 	"log"
@@ -82,14 +83,12 @@ func GetShortURLHandler(w http.ResponseWriter, r *http.Request) {
 	exist, url, err := storage.Storage.FindByHash(hash)
 
 	if !exist {
-		w.WriteHeader(http.StatusNotFound)
+		fmt.Printf("Невозможно найти сслыку по хэшу - %s: %s", hash, err)
 		return
 	}
 
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
-		return
+		fmt.Printf("Ошибка поиска по хэшу - %s: %s", hash, err)
 	}
 
 	w.Header().Add("Location", url.URL)
@@ -120,8 +119,7 @@ func APICreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
 	err := storage.Storage.Save(url)
 
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
+		fmt.Printf("Ошибка сохранения url - %s:", err)
 	}
 
 	resp, _ := json.Marshal(response{URL: url.ShortURL})
