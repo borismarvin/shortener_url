@@ -68,8 +68,7 @@ func CreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Если такой url уже есть - отдаем соответствующий статус
 	if err != nil {
-		http.Error(w, "Ошибка при чтении тела запроса", http.StatusBadRequest)
-		return
+		fmt.Println("Ошибка при чтении тела запроса")
 	}
 
 	w.WriteHeader(http.StatusCreated)
@@ -84,7 +83,6 @@ func GetShortURLHandler(w http.ResponseWriter, r *http.Request) {
 
 	if !exist {
 		fmt.Printf("Невозможно найти сслыку по хэшу - %s: %s", hash, err)
-		return
 	}
 
 	if err != nil {
@@ -135,8 +133,7 @@ func PingHandler(w http.ResponseWriter, r *http.Request) {
 	err := storage.Storage.Ping()
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		panic(err)
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
