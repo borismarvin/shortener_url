@@ -32,7 +32,7 @@ func setup() {
 	storage.New(&app.Cfg)
 
 	S = suite{
-		Server: httptest.NewServer(router()),
+		Server: httptest.NewServer(Router()),
 	}
 }
 
