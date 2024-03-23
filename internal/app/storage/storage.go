@@ -15,8 +15,6 @@ type repository interface {
 	Save(url *types.URL) error
 	// FindByHash ищет урл в хранилище по хешу
 	FindByHash(hash string) (exist bool, url *types.URL, err error)
-	// FindByUUID ищет все ссылки пользователя с uuid
-	FindByUUID(uuid string) (exist bool, urls map[string]*types.URL, err error)
 }
 
 type store interface {
@@ -24,8 +22,6 @@ type store interface {
 	Save(url *types.URL) error
 	// FindByHash ищет урл в хранилище по хешу
 	FindByHash(hash string) (exist bool, url *types.URL, err error)
-	// FindByUUID ищет все ссылки пользователя с uuid
-	FindByUUID(uuid string) (urls map[string]*types.URL, err error)
 	// Drop чистит memory хранилище, удаляет файл
 	Drop()
 }
