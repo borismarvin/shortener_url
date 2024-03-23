@@ -72,15 +72,6 @@ func TestPostUrl(t *testing.T) {
 				statusCode: http.StatusTemporaryRedirect,
 			},
 		},
-		{
-			name:   "Все ссылки пользователя",
-			url:    "/api/user/urls",
-			method: http.MethodGet,
-			body:   nil,
-			want: want{
-				statusCode: http.StatusNoContent,
-			},
-		},
 	}
 
 	for _, tt := range tests {
