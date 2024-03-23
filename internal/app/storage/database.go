@@ -88,17 +88,32 @@ func (r *DatabaseRepository) FindByHash(hash string) (exist bool, url *types.URL
 	url = urls[0]
 	return
 }
-func (r *DatabaseRepository) SaveBatch(url []*types.URL) (err error) {
+func (r *DatabaseRepository) SaveBatch(urls []*types.URL) (err error) {
 	if r.DB == nil {
-		err = errors.New("нет подключения к бд")
-		return
-	}
-	for u := range url {
-		_, err = r.DB.NamedExec(`INSERT INTO urls (hash, uuid, url, short_url)
-        VALUES (:hash, :uuid, :url, :short_url)`, u)
+		return errors.New("no connection to the database")
 	}
 
-	return err
+	tx, err := r.DB.Beginx()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+			return
+		}
+		err = tx.Commit()
+	}()
+
+	for _, u := range urls {
+		_, err := tx.NamedExec(`INSERT INTO urls (hash, uuid, url, short_url)
+            VALUES (:hash, :uuid, :url, :short_url)`, u)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 func (r *DatabaseRepository) migrate() {
 	_, err := r.DB.Exec(`CREATE TABLE IF NOT EXISTS urls
