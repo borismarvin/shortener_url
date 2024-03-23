@@ -93,9 +93,10 @@ func (r *DatabaseRepository) SaveBatch(url []*types.URL) (err error) {
 		err = errors.New("нет подключения к бд")
 		return
 	}
-
-	_, err = r.DB.NamedExec(`INSERT INTO urls (hash, uuid, url, short_url)
-        VALUES (:hash, :uuid, :url, :short_url)`, url)
+	for u := range url {
+		_, err = r.DB.NamedExec(`INSERT INTO urls (hash, uuid, url, short_url)
+        VALUES (:hash, :uuid, :url, :short_url)`, u)
+	}
 
 	return err
 }
