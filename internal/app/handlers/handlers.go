@@ -144,7 +144,7 @@ func PingHandler(w http.ResponseWriter, r *http.Request) {
 //		"correlation_id": "<строковый идентификатор>",
 //		"original_url": "<URL для сокращения>"
 //	},
-func ShortenMultipleUrl(w http.ResponseWriter, r *http.Request) {
+func ShortenMultipleURL(w http.ResponseWriter, r *http.Request) {
 	var resp []*shortenBatchURL
 	var urls []*types.URL
 	var urlArray []batchURL
