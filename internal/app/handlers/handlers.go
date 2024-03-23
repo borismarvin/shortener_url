@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io"
 
-	"log"
 	"net/http"
 
+	"github.com/borismarvin/shortener_url.git/internal/app"
 	"github.com/borismarvin/shortener_url.git/internal/app/middlewares"
 	storage "github.com/borismarvin/shortener_url.git/internal/app/storage"
 	"github.com/borismarvin/shortener_url.git/internal/app/types"
@@ -45,14 +45,12 @@ type userURL struct {
 
 // CreateShortURLHandler — создает короткий урл.
 func CreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
-	originalURL, _ := io.ReadAll(r.Body)
-
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			log.Printf("CreateShortURLHandler. %s", err)
-		}
-	}(r.Body)
+	originalURL, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Ошибка при чтении тела запроса", http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
 
 	uuid := middlewares.UserSignedCookie.UUID
 	hash, shortURL := utils.GetShortURL(string(originalURL))
@@ -64,7 +62,7 @@ func CreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
 		ShortURL: shortURL,
 	}
 
-	err := storage.Storage.Save(url)
+	err = storage.Storage.Save(url)
 
 	// Если такой url уже есть - отдаем соответствующий статус
 	if err != nil {
@@ -138,4 +136,49 @@ func PingHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.Write([]byte("ok"))
+}
+
+// ShortenMultipleUrl — принимающий в теле запроса множество URL для сокращения в формате:
+//
+//	{
+//		"correlation_id": "<строковый идентификатор>",
+//		"original_url": "<URL для сокращения>"
+//	},
+func ShortenMultipleUrl(w http.ResponseWriter, r *http.Request) {
+	var resp []*shortenBatchURL
+	var urls []*types.URL
+	var urlArray []batchURL
+	// Обрабатываем входящий json
+	if err := json.NewDecoder(r.Body).Decode(&urlArray); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	uuid := middlewares.UserSignedCookie.UUID
+	for _, u := range urlArray {
+		shortURL := fmt.Sprintf("%s/%s", app.Cfg.BaseURL, u.CorrelationID)
+
+		urls = append(urls, &types.URL{
+			UUID:     uuid,
+			Hash:     u.CorrelationID,
+			URL:      u.OriginalURL,
+			ShortURL: shortURL,
+		})
+		resp = append(resp, &shortenBatchURL{
+			CorrelationID: u.CorrelationID,
+			ShortURL:      shortURL,
+		})
+	}
+
+	err := storage.Storage.SaveBatch(urls)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	response, _ := json.Marshal(resp)
+
+	w.Header().Add("Content-Type", "application/json")
+	w.Header().Add("Accept", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	w.Write(response)
 }

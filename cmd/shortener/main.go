@@ -65,6 +65,6 @@ func Router() (r *chi.Mux) {
 	r.Get("/ping", handlers.PingHandler)
 	r.Post("/api/shorten", handlers.APICreateShortURLHandler)
 	r.Get("/{hash}", handlers.GetShortURLHandler)
-
+	r.Post("/api/shorten/batch", handlers.ShortenMultipleUrl)
 	return r
 }
