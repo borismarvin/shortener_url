@@ -87,8 +87,27 @@ func (s *storage) Save(url *types.URL) (err error) {
 	return
 }
 func (s *storage) SaveBatch(url []*types.URL) (err error) {
-	err = s.repositories.db.SaveBatch([]*types.URL{})
-	return err
+	for _, u := range url {
+		err = s.repositories.memory.Save(u)
+		// если не получилось записать в память - все плохо. выходим
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	}
+	for _, u := range url {
+		err = s.repositories.memory.Save(u)
+		// если не получилось записать в память - все плохо. выходим
+		if err != nil {
+			log.Println(err)
+			return
+		}
+	}
+	err = s.repositories.db.SaveBatch(url)
+	if err != nil {
+		log.Println(err)
+	}
+	return
 }
 func (s *storage) FindByHash(hash string) (exist bool, url *types.URL, err error) {
 	// Сначала в бд
