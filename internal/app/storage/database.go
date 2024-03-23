@@ -69,32 +69,23 @@ func (r *DatabaseRepository) Save(url *types.URL) (err error) {
 }
 func (r *DatabaseRepository) FindByHash(hash string) (exist bool, url *types.URL, err error) {
 	if r.DB == nil {
-		exist = false
-		url = nil
-		err = errors.New("нет подключения к бд")
+		err = errors.New("no connection to the database")
 		return
 	}
 
-	rows, err := r.DB.QueryContext(context.Background(), "SELECT u.hash, u.uuid, u.url, u.short_url FROM urls u WHERE u.hash = $1 limit $2", hash, 1)
+	var urls []*types.URL
+	err = r.DB.SelectContext(context.Background(), &urls, "SELECT hash, uuid, url, short_url FROM urls WHERE hash = $1 LIMIT 1", hash)
+	if err != nil {
+		return
+	}
 
-	defer func(rows *sql.Rows) {
-		err := rows.Close()
-		if err != nil {
-			log.Println(err)
-		}
-	}(rows)
-
-	if rows.Err() != nil {
+	if len(urls) == 0 {
 		exist = false
 		return
 	}
 
-	url = &types.URL{}
-	for rows.Next() {
-		exist = true
-		rows.Scan(&url.Hash, &url.UUID, &url.URL, &url.ShortURL)
-	}
-
+	exist = true
+	url = urls[0]
 	return
 }
 
