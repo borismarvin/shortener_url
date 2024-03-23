@@ -50,29 +50,21 @@ func (r *DatabaseRepository) Ping() error {
 }
 func (r *DatabaseRepository) Save(url *types.URL) (err error) {
 	if r.DB == nil {
-		return fmt.Errorf("NO connetction")
+		return fmt.Errorf("no connection")
 	}
 
-	rows, err := r.DB.QueryContext(context.Background(), "SELECT * FROM urls where 'hash' = $1", url.Hash)
-
-	defer func(rows *sql.Rows) {
-		err := rows.Close()
-		if err != nil {
-			log.Println(err)
-		}
-	}(rows)
-
-	if rows.Err() != nil {
+	var existingURL types.URL
+	err = r.DB.GetContext(context.Background(), &existingURL, "SELECT * FROM urls WHERE hash = $1", url.Hash)
+	if err != nil && err != sql.ErrNoRows {
 		return err
 	}
 
-	if rows.Next() {
-		return fmt.Errorf("URL CONFLICT")
+	if existingURL.Hash != "" {
+		return fmt.Errorf("URL conflict")
 	}
 
 	_, err = r.DB.NamedExec(`INSERT INTO urls (hash, uuid, url, short_url)
-		VALUES (:hash, :uuid, :url, :short_url)`, url)
-
+        VALUES (:hash, :uuid, :url, :short_url)`, url)
 	return err
 }
 func (r *DatabaseRepository) FindByHash(hash string) (exist bool, url *types.URL, err error) {

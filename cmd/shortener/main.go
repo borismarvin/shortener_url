@@ -5,32 +5,26 @@ import (
 	"flag"
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/borismarvin/shortener_url.git/internal/app"
 	handlers "github.com/borismarvin/shortener_url.git/internal/app/handlers"
+	"github.com/borismarvin/shortener_url.git/internal/app/logger"
 	middlewares "github.com/borismarvin/shortener_url.git/internal/app/middlewares"
 	storage "github.com/borismarvin/shortener_url.git/internal/app/storage"
 	"github.com/caarlos0/env"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 )
 
 func main() {
 	r := Router()
 
 	// Логер
-	flog, err := os.OpenFile(`server.log`, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-	defer flog.Close()
+	logger.Initialize()
 
 	//log.SetOutput(flog)
 
 	// Переменные окружения в конфиг
-	err = env.Parse(&app.Cfg)
+	err := env.Parse(&app.Cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -64,11 +58,6 @@ func main() {
 func Router() (r *chi.Mux) {
 	r = chi.NewRouter()
 
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-	r.Use(middleware.Compress(5))
 	r.Use(middlewares.Decompress)
 	r.Use(middlewares.UserCookie)
 
