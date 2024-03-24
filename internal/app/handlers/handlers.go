@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 
 	"net/http"
 
@@ -74,14 +73,6 @@ func CreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Другие ошибки при сохранении в хранилище
-	if err != nil {
-		log.Printf("CreateShortURLHandler. Не удалось сохранить урл в хранилище. %s", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
-		return
-	}
-
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(url.ShortURL))
 }
@@ -98,8 +89,7 @@ func GetShortURLHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
+		fmt.Printf("error finding url")
 		return
 	}
 
