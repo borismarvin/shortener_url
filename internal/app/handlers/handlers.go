@@ -2,12 +2,15 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"log"
 
 	"net/http"
 
 	"github.com/borismarvin/shortener_url.git/internal/app"
+	shortenerErrors "github.com/borismarvin/shortener_url.git/internal/app/errors"
 	"github.com/borismarvin/shortener_url.git/internal/app/middlewares"
 	storage "github.com/borismarvin/shortener_url.git/internal/app/storage"
 	"github.com/borismarvin/shortener_url.git/internal/app/types"
@@ -65,8 +68,18 @@ func CreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
 	err = storage.Storage.Save(url)
 
 	// Если такой url уже есть - отдаем соответствующий статус
+	if errors.Is(err, shortenerErrors.ErrURLConflict) {
+		w.WriteHeader(http.StatusConflict)
+		w.Write([]byte(url.ShortURL))
+		return
+	}
+
+	// Другие ошибки при сохранении в хранилище
 	if err != nil {
-		fmt.Println("Ошибка при чтении тела запроса")
+		log.Printf("CreateShortURLHandler. Не удалось сохранить урл в хранилище. %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
@@ -80,11 +93,14 @@ func GetShortURLHandler(w http.ResponseWriter, r *http.Request) {
 	exist, url, err := storage.Storage.FindByHash(hash)
 
 	if !exist {
-		fmt.Printf("Невозможно найти сслыку по хэшу - %s: %s", hash, err)
+		w.WriteHeader(http.StatusNotFound)
+		return
 	}
 
 	if err != nil {
-		fmt.Printf("Ошибка поиска по хэшу - %s: %s", hash, err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
+		return
 	}
 
 	w.Header().Add("Location", url.URL)
@@ -114,8 +130,18 @@ func APICreateShortURLHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := storage.Storage.Save(url)
 
+	// Если такой url уже есть - отдаем соответствующий статус
+	if errors.Is(err, shortenerErrors.ErrURLConflict) {
+		resp, _ := json.Marshal(response{URL: url.ShortURL})
+		w.Header().Add("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		w.Write(resp)
+		return
+	}
+
 	if err != nil {
-		fmt.Printf("Ошибка сохранения url - %s:", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(err.Error()))
 	}
 
 	resp, _ := json.Marshal(response{URL: url.ShortURL})
