@@ -4,12 +4,14 @@ type Args struct {
 	StartAddr string
 	BaseAddr  string
 	FilePath  string
+	Database  string
 }
 
 type GetArgsBuilder interface {
 	SetStart(string) GetArgsBuilder
 	SetBase(string) GetArgsBuilder
 	SetFile(string) GetArgsBuilder
+	SetDB(string) GetArgsBuilder
 	Build() *Args
 }
 type ConcreteGetArgsBuilder struct {
@@ -31,6 +33,10 @@ func (cgab *ConcreteGetArgsBuilder) SetBase(baseAddr string) GetArgsBuilder {
 }
 func (cgab *ConcreteGetArgsBuilder) SetFile(filePath string) GetArgsBuilder {
 	cgab.args.FilePath = filePath
+	return cgab
+}
+func (cgab *ConcreteGetArgsBuilder) SetDB(database string) GetArgsBuilder {
+	cgab.args.Database = database
 	return cgab
 }
 func (cgab *ConcreteGetArgsBuilder) Build() *Args {
