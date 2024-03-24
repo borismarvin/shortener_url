@@ -3,6 +3,7 @@ package storage
 import (
 	"fmt"
 
+	"github.com/borismarvin/shortener_url.git/internal/app/errors"
 	"github.com/borismarvin/shortener_url.git/internal/app/types"
 )
 
@@ -23,7 +24,7 @@ func (r *MemoryRepository) Save(url *types.URL) error {
 		r.items[url.Hash] = url
 		return nil
 	} else {
-		return fmt.Errorf("url уже существует")
+		return fmt.Errorf("%w", errors.ErrURLConflict)
 	}
 }
 
